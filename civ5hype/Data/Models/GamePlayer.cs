@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using civ5hype.Data.Enums;
 
 namespace civ5hype.Data.Models
 {
@@ -24,6 +25,9 @@ namespace civ5hype.Data.Models
 
         [StringLength(50)]
         public string? Civilization { get; set; }
+        
+        // Skill-Level des Spielers zum Zeitpunkt des Spiels
+        public SkillLevel? SkillLevel { get; set; }
         
         // Fun-Statistiken (zählen nicht zur Hauptstatistik)
         public bool HalberSiegOpStart { get; set; } // Zählt nur als halber Sieg da OP Start

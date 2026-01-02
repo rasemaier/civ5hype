@@ -70,6 +70,18 @@ else
                                     {
                                         <span class="badge bg-secondary">@gp.Civilization</span>
                                     }
+                                    @if (gp.SkillLevel.HasValue)
+                                    {
+                                        var skillBadge = gp.SkillLevel.Value switch
+                                        {
+                                            civ5hype.Data.Enums.SkillLevel.Neuling => ("🟢 Neuling", "success"),
+                                            civ5hype.Data.Enums.SkillLevel.Okay => ("🔵 Okay", "primary"),
+                                            civ5hype.Data.Enums.SkillLevel.Gut => ("🟡 Gut", "warning"),
+                                            civ5hype.Data.Enums.SkillLevel.SehrGut => ("🔴 Sehr Gut", "danger"),
+                                            _ => ("", "secondary")
+                                        };
+                                        <span class="badge bg-@skillBadge.Item2">@skillBadge.Item1</span>
+                                    }
                                     @if (gp.IsWinner)
                                     {
                                         <span class="badge bg-success">🏆 Gewinner</span>
@@ -170,7 +182,7 @@ else
                                             }
                                         </select>
                                     </div>
-                                    <div class="col-5">
+                                    <div class="col-4">
                                         <label class="form-label small">Nation</label>
                                         <select class="form-select" @bind="selectedPlayers[index].Civilization">
                                             <option value="">-- Nation wählen --</option>
@@ -178,6 +190,16 @@ else
                                             {
                                                 <option value="@civ">@civ</option>
                                             }
+                                        </select>
+                                    </div>
+                                    <div class="col-2">
+                                        <label class="form-label small">Skill</label>
+                                        <select class="form-select" @bind="selectedPlayers[index].SkillLevel">
+                                            <option value="">-</option>
+                                            <option value="1">🟢 Neuling</option>
+                                            <option value="2">🔵 Okay</option>
+                                            <option value="3">🟡 Gut</option>
+                                            <option value="4">🔴 Sehr Gut</option>
                                         </select>
                                     </div>
                                     <div class="col-1 d-flex align-items-end">
@@ -317,6 +339,7 @@ else
             Rank = gp.Rank,
             IsWinner = gp.IsWinner,
             Civilization = gp.Civilization,
+            SkillLevel = gp.SkillLevel.HasValue ? (int)gp.SkillLevel.Value : null,
             HalberSiegOpStart = gp.HalberSiegOpStart,
             SiegerDerHerzen = gp.SiegerDerHerzen,
             Betrueger = gp.Betrueger
@@ -354,6 +377,9 @@ else
                                 Rank = i + 1,
                                 IsWinner = selectedPlayers[i].IsWinner,
                                 Civilization = selectedPlayers[i].Civilization,
+                                SkillLevel = selectedPlayers[i].SkillLevel.HasValue 
+                                    ? (civ5hype.Data.Enums.SkillLevel)selectedPlayers[i].SkillLevel.Value 
+                                    : null,
                                 HalberSiegOpStart = selectedPlayers[i].HalberSiegOpStart,
                                 SiegerDerHerzen = selectedPlayers[i].SiegerDerHerzen,
                                 Betrueger = selectedPlayers[i].Betrueger
@@ -377,6 +403,9 @@ else
                             Rank = i + 1,
                             IsWinner = selectedPlayers[i].IsWinner,
                             Civilization = selectedPlayers[i].Civilization,
+                            SkillLevel = selectedPlayers[i].SkillLevel.HasValue 
+                                ? (civ5hype.Data.Enums.SkillLevel)selectedPlayers[i].SkillLevel.Value 
+                                : null,
                             HalberSiegOpStart = selectedPlayers[i].HalberSiegOpStart,
                             SiegerDerHerzen = selectedPlayers[i].SiegerDerHerzen,
                             Betrueger = selectedPlayers[i].Betrueger
@@ -487,6 +516,7 @@ else
         public int Rank { get; set; }
         public bool IsWinner { get; set; }
         public string? Civilization { get; set; }
+        public int? SkillLevel { get; set; }
         
         // Fun-Statistiken
         public bool HalberSiegOpStart { get; set; }
