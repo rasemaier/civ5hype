@@ -16,8 +16,9 @@ FROM mcr.microsoft.com/dotnet/aspnet:10.0
 WORKDIR /app
 COPY --from=build /app/publish .
 
-# Copy database if exists
-COPY --from=build /src/civ5hype/civ5hype.db* ./ 2>/dev/null || true
+# Copy database if exists (using shell to handle missing files)
+RUN mkdir -p /app
+COPY --from=build /src/civ5hype/*.db* ./ || true
 
 # Expose port - Railway provides PORT env variable
 ENV ASPNETCORE_URLS=http://+:${PORT:-5000}
