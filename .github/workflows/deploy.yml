@@ -1,0 +1,32 @@
+name: Build and Test
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v3
+      with:
+        dotnet-version: '10.0.x'
+        
+    - name: Restore dependencies
+      run: dotnet restore civ5hype.csproj
+      working-directory: ./civ5hype
+      
+    - name: Build
+      run: dotnet build civ5hype.csproj --no-restore --configuration Release
+      working-directory: ./civ5hype
+      
+    - name: Test
+      run: dotnet test civ5hype.csproj --no-build --configuration Release --verbosity normal
+      working-directory: ./civ5hype
+

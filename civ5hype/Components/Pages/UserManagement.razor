@@ -1,0 +1,116 @@
+@page "/admin/users"
+@using civ5hype.Data
+@using civ5hype.Data.Enums
+@using civ5hype.Services
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.Authorization
+@inject UserService UserService
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject NavigationManager Navigation
+@attribute [Authorize]
+@rendermode InteractiveServer
+
+<PageTitle>Benutzerverwaltung</PageTitle>
+
+<h1>Benutzerverwaltung</h1>
+
+@if (!isAdmin)
+{
+    <div class="alert alert-danger">
+        Sie haben keine Berechtigung, diese Seite zu sehen.
+    </div>
+}
+else if (users == null)
+{
+    <p><em>Laden...</em></p>
+}
+else
+{
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Benutzername</th>
+                <th>E-Mail</th>
+                <th>Rolle</th>
+                <th>Verknüpfter Spieler</th>
+                <th>Aktionen</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var user in users)
+            {
+                <tr>
+                    <td>@user.UserName</td>
+                    <td>@user.Email</td>
+                    <td>
+                        <span class="badge @GetRoleBadgeClass(user.Role)">
+                            @user.Role.ToString()
+                        </span>
+                    </td>
+                    <td>@(user.Player?.Name ?? "-")</td>
+                    <td>
+                        @if (user.Id != currentUserId)
+                        {
+                            <select class="form-select form-select-sm" 
+                                    value="@user.Role" 
+                                    @onchange="@(e => ChangeUserRole(user.Id, e.Value?.ToString()))">
+                                <option value="@UserRole.User">User</option>
+                                <option value="@UserRole.Creator">Ersteller</option>
+                                <option value="@UserRole.Admin">Admin</option>
+                            </select>
+                        }
+                        else
+                        {
+                            <em>Sie selbst</em>
+                        }
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private List<ApplicationUser>? users;
+    private bool isAdmin = false;
+    private string? currentUserId;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+        currentUserId = user.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+
+        if (currentUserId != null)
+        {
+            var currentUser = await UserService.GetUserByIdAsync(currentUserId);
+            isAdmin = currentUser?.Role == UserRole.Admin;
+
+            if (isAdmin)
+            {
+                users = await UserService.GetAllUsersAsync();
+            }
+        }
+    }
+
+    private async Task ChangeUserRole(string userId, string? roleString)
+    {
+        if (Enum.TryParse<UserRole>(roleString, out var role))
+        {
+            await UserService.UpdateUserRoleAsync(userId, role);
+            users = await UserService.GetAllUsersAsync();
+        }
+    }
+
+    private string GetRoleBadgeClass(UserRole role)
+    {
+        return role switch
+        {
+            UserRole.Admin => "bg-danger",
+            UserRole.Creator => "bg-warning",
+            UserRole.User => "bg-secondary",
+            _ => "bg-secondary"
+        };
+    }
+}
+

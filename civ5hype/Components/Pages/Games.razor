@@ -1,0 +1,391 @@
+@page "/games"
+@using civ5hype.Data.Models
+@using civ5hype.Services
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.AspNetCore.Components.Forms
+@using static civ5hype.Data.Models.Civilizations
+@inject GameService GameService
+@inject PlayerService PlayerService
+@inject FileUploadService FileUploadService
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject NavigationManager Navigation
+@attribute [Authorize]
+@rendermode InteractiveServer
+
+<PageTitle>Spiele</PageTitle>
+
+<h1>Spiele</h1>
+
+<div class="mb-3">
+    <button class="btn btn-primary" @onclick="ShowAddGame">Neues Spiel</button>
+</div>
+
+@if (games == null)
+{
+    <p><em>Laden...</em></p>
+}
+else
+{
+    <div class="row">
+        @foreach (var game in games)
+        {
+            <div class="col-md-6 mb-3">
+                <div class="card">
+                    <div class="card-header">
+                        <strong>@game.PlayedOn.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</strong>
+                    </div>
+                    <div class="card-body">
+                        @if (!string.IsNullOrEmpty(game.ScreenshotPath))
+                        {
+                            <img src="@game.ScreenshotPath" class="img-fluid mb-2" alt="Screenshot" style="max-height: 200px;" />
+                        }
+                        @if (!string.IsNullOrEmpty(game.Comment))
+                        {
+                            <p class="card-text">@game.Comment</p>
+                        }
+                        <h6>Spieler:</h6>
+                        <ol>
+                            @foreach (var gp in game.GamePlayers.OrderBy(gp => gp.Rank))
+                            {
+                                <li>
+                                    <strong>@gp.Player?.Name</strong>
+                                    @if (!string.IsNullOrEmpty(gp.Civilization))
+                                    {
+                                        <span class="badge bg-secondary">@gp.Civilization</span>
+                                    }
+                                    @if (gp.IsWinner)
+                                    {
+                                        <span class="badge bg-success">🏆 Gewinner</span>
+                                    }
+                                </li>
+                            }
+                        </ol>
+                        <small class="text-muted">Erstellt von: @game.CreatedBy?.UserName</small>
+                    </div>
+                    <div class="card-footer">
+                        @if (canEdit)
+                        {
+                            <button class="btn btn-sm btn-warning" @onclick="() => EditGame(game)">Bearbeiten</button>
+                            <button class="btn btn-sm btn-danger" @onclick="() => DeleteGame(game.Id)">Löschen</button>
+                        }
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+}
+
+@if (showDialog)
+{
+    <div class="modal show d-block" tabindex="-1" style="overflow-y: auto;">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">@(editingGame?.Id > 0 ? "Spiel bearbeiten" : "Neues Spiel")</h5>
+                    <button type="button" class="btn-close" @onclick="CloseDialog"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Datum</label>
+                        <input type="datetime-local" class="form-control" @bind="gameDate" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Kommentar</label>
+                        <textarea class="form-control" @bind="editingGame!.Comment" rows="3"></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Screenshot</label>
+                        @if (!string.IsNullOrEmpty(editingGame!.ScreenshotPath))
+                        {
+                            <div class="mb-2">
+                                <img src="@editingGame.ScreenshotPath" class="img-thumbnail" style="max-height: 200px;" alt="Screenshot" />
+                                <button type="button" class="btn btn-sm btn-danger ms-2" @onclick="RemoveScreenshot">Entfernen</button>
+                            </div>
+                        }
+                        <InputFile OnChange="HandleScreenshotUpload" accept="image/*" class="form-control" />
+                        @if (isUploading)
+                        {
+                            <div class="spinner-border spinner-border-sm mt-2" role="status">
+                                <span class="visually-hidden">Hochladen...</span>
+                            </div>
+                        }
+                        @if (!string.IsNullOrEmpty(uploadError))
+                        {
+                            <div class="alert alert-danger mt-2">@uploadError</div>
+                        }
+                    </div>
+                    <h6>Spieler (Rang 1-8):</h6>
+                    @for (int i = 0; i < selectedPlayers.Count; i++)
+                    {
+                        var index = i;
+                        <div class="card mb-3">
+                            <div class="card-body">
+                                <div class="row mb-2">
+                                    <div class="col-1">
+                                        <strong style="font-size: 1.2em;">@(i + 1).</strong>
+                                    </div>
+                                    <div class="col-5">
+                                        <label class="form-label small">Spieler</label>
+                                        <select class="form-select" @bind="selectedPlayers[index].PlayerId">
+                                            <option value="0">-- Spieler wählen --</option>
+                                            @if (allPlayers != null)
+                                            {
+                                                @foreach (var player in allPlayers)
+                                                {
+                                                    <option value="@player.Id">@player.Name</option>
+                                                }
+                                            }
+                                        </select>
+                                    </div>
+                                    <div class="col-5">
+                                        <label class="form-label small">Nation</label>
+                                        <select class="form-select" @bind="selectedPlayers[index].Civilization">
+                                            <option value="">-- Nation wählen --</option>
+                                            @foreach (var civ in Civilizations.All)
+                                            {
+                                                <option value="@civ">@civ</option>
+                                            }
+                                        </select>
+                                    </div>
+                                    <div class="col-1 d-flex align-items-end">
+                                        @if (i == selectedPlayers.Count - 1 && i < 7)
+                                        {
+                                            <button class="btn btn-sm btn-success me-1" @onclick="AddPlayerSlot">+</button>
+                                        }
+                                        @if (selectedPlayers.Count > 1)
+                                        {
+                                            <button class="btn btn-sm btn-danger" @onclick="() => RemovePlayerSlot(index)">-</button>
+                                        }
+                                    </div>
+                                </div>
+                                <div class="row">
+                                    <div class="col-12">
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" @bind="selectedPlayers[index].IsWinner" id="winner-@index" />
+                                            <label class="form-check-label" for="winner-@index">
+                                                🏆 Gewinner
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" @onclick="CloseDialog">Abbrechen</button>
+                    <button type="button" class="btn btn-primary" @onclick="SaveGame">Speichern</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="modal-backdrop show"></div>
+}
+
+@code {
+    private List<Game>? games;
+    private List<Player>? allPlayers;
+    private bool showDialog = false;
+    private Game? editingGame;
+    private DateTime gameDate = DateTime.Now;
+    private List<PlayerSelection> selectedPlayers = new();
+    private bool canEdit = false;
+    private string? currentUserId;
+    private bool isUploading = false;
+    private string? uploadError = null;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        currentUserId = authState.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+        canEdit = authState.User.Identity?.IsAuthenticated ?? false;
+
+        await LoadGames();
+        allPlayers = await PlayerService.GetAllPlayersAsync();
+    }
+
+    private async Task LoadGames()
+    {
+        games = await GameService.GetAllGamesAsync();
+    }
+
+    private void ShowAddGame()
+    {
+        editingGame = new Game { PlayedOn = DateTime.Now };
+        gameDate = DateTime.Now;
+        selectedPlayers = new List<PlayerSelection>
+        {
+            new PlayerSelection { Rank = 1 },
+            new PlayerSelection { Rank = 2 }
+        };
+        showDialog = true;
+    }
+
+    private void EditGame(Game game)
+    {
+        editingGame = new Game
+        {
+            Id = game.Id,
+            PlayedOn = game.PlayedOn,
+            Comment = game.Comment,
+            ScreenshotPath = game.ScreenshotPath,
+            CreatedById = game.CreatedById
+        };
+        gameDate = game.PlayedOn.ToLocalTime();
+        selectedPlayers = game.GamePlayers.OrderBy(gp => gp.Rank).Select(gp => new PlayerSelection
+        {
+            PlayerId = gp.PlayerId,
+            Rank = gp.Rank,
+            IsWinner = gp.IsWinner,
+            Civilization = gp.Civilization
+        }).ToList();
+        showDialog = true;
+    }
+
+    private async Task SaveGame()
+    {
+        if (editingGame != null && currentUserId != null)
+        {
+            editingGame.PlayedOn = gameDate.ToUniversalTime();
+            editingGame.CreatedById = currentUserId;
+
+            if (editingGame.Id > 0)
+            {
+                // Update existing game
+                var existingGame = await GameService.GetGameByIdAsync(editingGame.Id);
+                if (existingGame != null)
+                {
+                    existingGame.PlayedOn = editingGame.PlayedOn;
+                    existingGame.Comment = editingGame.Comment;
+                    existingGame.ScreenshotPath = editingGame.ScreenshotPath;
+                    existingGame.GamePlayers.Clear();
+                    
+                    for (int i = 0; i < selectedPlayers.Count; i++)
+                    {
+                        if (selectedPlayers[i].PlayerId > 0)
+                        {
+                            existingGame.GamePlayers.Add(new GamePlayer
+                            {
+                                PlayerId = selectedPlayers[i].PlayerId,
+                                Rank = i + 1,
+                                IsWinner = selectedPlayers[i].IsWinner,
+                                Civilization = selectedPlayers[i].Civilization
+                            });
+                        }
+                    }
+                    await GameService.UpdateGameAsync(existingGame);
+                }
+            }
+            else
+            {
+                // Create new game
+                editingGame.GamePlayers = new List<GamePlayer>();
+                for (int i = 0; i < selectedPlayers.Count; i++)
+                {
+                    if (selectedPlayers[i].PlayerId > 0)
+                    {
+                        editingGame.GamePlayers.Add(new GamePlayer
+                        {
+                            PlayerId = selectedPlayers[i].PlayerId,
+                            Rank = i + 1,
+                            IsWinner = selectedPlayers[i].IsWinner,
+                            Civilization = selectedPlayers[i].Civilization
+                        });
+                    }
+                }
+                await GameService.CreateGameAsync(editingGame);
+            }
+            
+            await LoadGames();
+            CloseDialog();
+        }
+    }
+
+    private async Task DeleteGame(int id)
+    {
+        await GameService.DeleteGameAsync(id);
+        await LoadGames();
+    }
+
+    private void AddPlayerSlot()
+    {
+        if (selectedPlayers.Count < 8)
+        {
+            selectedPlayers.Add(new PlayerSelection { Rank = selectedPlayers.Count + 1 });
+        }
+    }
+
+    private void RemovePlayerSlot(int index)
+    {
+        if (selectedPlayers.Count > 1)
+        {
+            selectedPlayers.RemoveAt(index);
+            for (int i = 0; i < selectedPlayers.Count; i++)
+            {
+                selectedPlayers[i].Rank = i + 1;
+            }
+        }
+    }
+
+    private void CloseDialog()
+    {
+        showDialog = false;
+        editingGame = null;
+        selectedPlayers.Clear();
+        uploadError = null;
+        isUploading = false;
+    }
+
+    private async Task HandleScreenshotUpload(InputFileChangeEventArgs e)
+    {
+        uploadError = null;
+        isUploading = true;
+
+        try
+        {
+            var file = e.File;
+            var path = await FileUploadService.UploadScreenshotAsync(file);
+            
+            if (path != null && editingGame != null)
+            {
+                // Delete old screenshot if exists
+                if (!string.IsNullOrEmpty(editingGame.ScreenshotPath))
+                {
+                    FileUploadService.DeleteScreenshot(editingGame.ScreenshotPath);
+                }
+                editingGame.ScreenshotPath = path;
+            }
+            else
+            {
+                uploadError = "Fehler beim Hochladen. Erlaubte Formate: JPG, PNG, GIF, WEBP (max. 10 MB)";
+            }
+        }
+        catch (Exception ex)
+        {
+            uploadError = $"Fehler: {ex.Message}";
+        }
+        finally
+        {
+            isUploading = false;
+        }
+    }
+
+    private void RemoveScreenshot()
+    {
+        if (editingGame != null && !string.IsNullOrEmpty(editingGame.ScreenshotPath))
+        {
+            FileUploadService.DeleteScreenshot(editingGame.ScreenshotPath);
+            editingGame.ScreenshotPath = null;
+        }
+    }
+
+    private class PlayerSelection
+    {
+        public int PlayerId { get; set; }
+        public int Rank { get; set; }
+        public bool IsWinner { get; set; }
+        public string? Civilization { get; set; }
+    }
+}
+

@@ -1,0 +1,53 @@
+namespace civ5hype.Data.Models
+{
+    public static class Civilizations
+    {
+        public static readonly List<string> All = new()
+        {
+            "Amerika",
+            "Ägypten",
+            "Assyrien",
+            "Arabien",
+            "Äthiopien",
+            "Azteken",
+            "Babylon",
+            "Brasilien",
+            "Byzanz",
+            "China",
+            "Dänemark",
+            "Deutschland",
+            "England",
+            "Frankreich",
+            "Griechenland",
+            "Hunnenreich",
+            "Indien",
+            "Indonesien",
+            "Inka",
+            "Irokesen",
+            "Japan",
+            "Karthago",
+            "Keltenreich",
+            "Korea",
+            "Marokko",
+            "Mayareich",
+            "Mongolen",
+            "Niederlande",
+            "Osmanen",
+            "Österreich",
+            "Persien",
+            "Polen",
+            "Polynesier",
+            "Portugal",
+            "Rom",
+            "Russland",
+            "Schoschonen",
+            "Schweden",
+            "Siam",
+            "Spanien",
+            "Songhai",
+            "Venedig",
+            "Zulu"
+        };
+    }
+}
+

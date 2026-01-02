@@ -1,0 +1,195 @@
+@page "/statistics"
+@using civ5hype.Data.Models
+@using civ5hype.Services
+@using Microsoft.AspNetCore.Authorization
+@inject GameService GameService
+@inject PlayerService PlayerService
+@attribute [Authorize]
+@rendermode InteractiveServer
+
+<PageTitle>Statistiken</PageTitle>
+
+<h1>Statistiken</h1>
+
+@if (players == null || playerStats == null)
+{
+    <p><em>Laden...</em></p>
+}
+else
+{
+    <div class="row">
+        <div class="col-md-12">
+            <h3>Rangliste</h3>
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>Rang</th>
+                        <th>Spieler</th>
+                        <th>Spiele</th>
+                        <th>Siege</th>
+                        <th>Siegquote</th>
+                        <th>Ø Platzierung</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @{
+                        int rank = 1;
+                    }
+                    @foreach (var stat in playerStats.OrderByDescending(s => s.Wins).ThenBy(s => s.AverageRank))
+                    {
+                        <tr>
+                            <td>
+                                @if (rank == 1)
+                                {
+                                    <span class="badge bg-warning">🥇</span>
+                                }
+                                else if (rank == 2)
+                                {
+                                    <span class="badge bg-secondary">🥈</span>
+                                }
+                                else if (rank == 3)
+                                {
+                                    <span class="badge bg-danger">🥉</span>
+                                }
+                                else
+                                {
+                                    @rank
+                                }
+                            </td>
+                            <td><strong>@stat.PlayerName</strong></td>
+                            <td>@stat.TotalGames</td>
+                            <td>@stat.Wins</td>
+                            <td>@stat.WinRate.ToString("P1")</td>
+                            <td>@stat.AverageRank.ToString("F2")</td>
+                        </tr>
+                        rank++;
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="row mt-4">
+        <div class="col-md-12">
+            <h3>Platzierungsverteilung</h3>
+            @foreach (var stat in playerStats.OrderBy(s => s.PlayerName))
+            {
+                <div class="card mb-3">
+                    <div class="card-header">
+                        <strong>@stat.PlayerName</strong> - @stat.TotalGames Spiele
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            @for (int i = 1; i <= 8; i++)
+                            {
+                                var count = stat.RankDistribution.ContainsKey(i) ? stat.RankDistribution[i] : 0;
+                                var percentage = stat.TotalGames > 0 ? (count * 100.0 / stat.TotalGames) : 0;
+                                <div class="col-md-3 mb-2">
+                                    <div class="card @(i == 1 ? "border-success" : "")">
+                                        <div class="card-body text-center">
+                                            <h5>Platz @i</h5>
+                                            <p class="mb-0">
+                                                <strong>@count</strong> (@percentage.ToString("F1")%)
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+
+    <div class="row mt-4">
+        <div class="col-md-12">
+            <h3>Letzte Spiele</h3>
+            @if (recentGames != null)
+            {
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Datum</th>
+                            <th>Gewinner</th>
+                            <th>Teilnehmer</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var game in recentGames.Take(10))
+                        {
+                            <tr>
+                                <td>@game.PlayedOn.ToLocalTime().ToString("dd.MM.yyyy")</td>
+                                <td>
+                                    @{
+                                        var winner = game.GamePlayers.FirstOrDefault(gp => gp.IsWinner);
+                                    }
+                                    @if (winner != null)
+                                    {
+                                        <strong>@winner.Player?.Name</strong>
+                                    }
+                                </td>
+                                <td>
+                                    @string.Join(", ", game.GamePlayers.OrderBy(gp => gp.Rank).Select(gp => gp.Player?.Name))
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+        </div>
+    </div>
+}
+
+@code {
+    private List<Player>? players;
+    private List<PlayerStatistics>? playerStats;
+    private List<Game>? recentGames;
+
+    protected override async Task OnInitializedAsync()
+    {
+        players = await PlayerService.GetAllPlayersAsync();
+        recentGames = await GameService.GetAllGamesAsync();
+        
+        var wins = await GameService.GetPlayerWinsAsync();
+        var rankDistribution = await GameService.GetPlayerRankDistributionAsync();
+
+        playerStats = new List<PlayerStatistics>();
+
+        foreach (var player in players)
+        {
+            var playerGames = recentGames
+                .SelectMany(g => g.GamePlayers)
+                .Where(gp => gp.PlayerId == player.Id)
+                .ToList();
+
+            if (playerGames.Any())
+            {
+                var stat = new PlayerStatistics
+                {
+                    PlayerId = player.Id,
+                    PlayerName = player.Name,
+                    TotalGames = playerGames.Count,
+                    Wins = wins.ContainsKey(player.Id) ? wins[player.Id] : 0,
+                    AverageRank = playerGames.Average(gp => gp.Rank),
+                    RankDistribution = rankDistribution.ContainsKey(player.Id) 
+                        ? rankDistribution[player.Id] 
+                        : new Dictionary<int, int>()
+                };
+                playerStats.Add(stat);
+            }
+        }
+    }
+
+    private class PlayerStatistics
+    {
+        public int PlayerId { get; set; }
+        public string PlayerName { get; set; } = string.Empty;
+        public int TotalGames { get; set; }
+        public int Wins { get; set; }
+        public double WinRate => TotalGames > 0 ? (double)Wins / TotalGames : 0;
+        public double AverageRank { get; set; }
+        public Dictionary<int, int> RankDistribution { get; set; } = new();
+    }
+}
+

@@ -1,0 +1,224 @@
+﻿@page "/"
+@using civ5hype.Data.Models
+@using civ5hype.Services
+@inject GameService GameService
+@inject PlayerService PlayerService
+@rendermode InteractiveServer
+
+<PageTitle>Civ 5 Hype</PageTitle>
+
+<div class="text-center mb-4">
+    <h1>🏛️ Civilization V Hype 🏛️</h1>
+    <p class="lead">Nur Gewinnen zählt!</p>
+    <p class="text-muted"><em>Als Zweiter "mitgewinnen"</em></p>
+</div>
+
+@if (playerStats != null && playerStats.Any())
+{
+    <div class="row mt-4">
+        <div class="col-md-12">
+            <div class="card shadow">
+                <div class="card-header bg-warning text-dark">
+                    <h3 class="mb-0">🏆 Hall of Fame - Top 5</h3>
+                </div>
+                <div class="card-body">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Rang</th>
+                                <th>Spieler</th>
+                                <th>Spiele</th>
+                                <th>Siege</th>
+                                <th>Siegquote</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @{
+                                int rank = 1;
+                            }
+                            @foreach (var stat in playerStats.OrderByDescending(s => s.Wins).ThenBy(s => s.AverageRank).Take(5))
+                            {
+                                <tr>
+                                    <td>
+                                        @if (rank == 1)
+                                        {
+                                            <span style="font-size: 1.5em;">🥇</span>
+                                        }
+                                        else if (rank == 2)
+                                        {
+                                            <span style="font-size: 1.5em;">🥈</span>
+                                        }
+                                        else if (rank == 3)
+                                        {
+                                            <span style="font-size: 1.5em;">🥉</span>
+                                        }
+                                        else
+                                        {
+                                            <strong>@rank.</strong>
+                                        }
+                                    </td>
+                                    <td><strong>@stat.PlayerName</strong></td>
+                                    <td>@stat.TotalGames</td>
+                                    <td><span class="badge bg-success">@stat.Wins</span></td>
+                                    <td>@stat.WinRate.ToString("P0")</td>
+                                </tr>
+                                rank++;
+                            }
+                        </tbody>
+                    </table>
+                    <div class="text-center mt-3">
+                        <a href="/statistics" class="btn btn-primary">Alle Statistiken ansehen</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @if (recentGames != null && recentGames.Any())
+    {
+        <div class="row mt-4">
+            <div class="col-md-12">
+                <div class="card shadow">
+                    <div class="card-header bg-info text-white">
+                        <h4 class="mb-0">📜 Letzte Spiele</h4>
+                    </div>
+                    <div class="card-body">
+                        <div class="list-group">
+                            @foreach (var game in recentGames.Take(5))
+                            {
+                                var winner = game.GamePlayers.FirstOrDefault(gp => gp.IsWinner);
+                                <div class="list-group-item">
+                                    <div class="d-flex w-100 justify-content-between">
+                                        <h5 class="mb-1">
+                                            🏆 <strong>@(winner?.Player?.Name ?? "Unbekannt")</strong>
+                                            @if (!string.IsNullOrEmpty(winner?.Civilization))
+                                            {
+                                                <span class="badge bg-secondary">@winner.Civilization</span>
+                                            }
+                                        </h5>
+                                        <small>@game.PlayedOn.ToLocalTime().ToString("dd.MM.yyyy")</small>
+                                    </div>
+                                    <p class="mb-1">
+                                        <small>Teilnehmer: @string.Join(", ", game.GamePlayers.OrderBy(gp => gp.Rank).Select(gp => gp.Player?.Name))</small>
+                                    </p>
+                                </div>
+                            }
+                        </div>
+                        <div class="text-center mt-3">
+                            <a href="/games" class="btn btn-info text-white">Alle Spiele ansehen</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+}
+else
+{
+    <div class="alert alert-warning text-center mt-4">
+        <h4>Noch keine Spiele erfasst</h4>
+        <p>Melde dich an und erfasse das erste Spiel!</p>
+    </div>
+}
+
+<AuthorizeView>
+    <Authorized>
+        <div class="row mt-4">
+            <div class="col-md-3">
+                <div class="card shadow-sm">
+                    <div class="card-body text-center">
+                        <h5 class="card-title">🎯 Spiele</h5>
+                        <p class="card-text">Erfasse neue Spiele</p>
+                        <a href="/games" class="btn btn-primary">Verwalten</a>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card shadow-sm">
+                    <div class="card-body text-center">
+                        <h5 class="card-title">👥 Spieler</h5>
+                        <p class="card-text">Spieler verwalten</p>
+                        <a href="/players" class="btn btn-primary">Verwalten</a>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card shadow-sm">
+                    <div class="card-body text-center">
+                        <h5 class="card-title">📊 Details</h5>
+                        <p class="card-text">Detaillierte Statistiken</p>
+                        <a href="/statistics" class="btn btn-primary">Ansehen</a>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card shadow-sm border-warning">
+                    <div class="card-body text-center">
+                        <h5 class="card-title">👑 Admin</h5>
+                        <p class="card-text">Benutzerverwaltung</p>
+                        <a href="/admin/users" class="btn btn-warning">Verwalten</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </Authorized>
+    <NotAuthorized>
+        <div class="text-center mt-4">
+            <div class="card shadow">
+                <div class="card-body">
+                    <h4>🔐 Anmelden für mehr Funktionen</h4>
+                    <p>Melde dich an, um Spiele zu erfassen und zu verwalten.</p>
+                    <a href="/Account/Login" class="btn btn-primary me-2">Anmelden</a>
+                    <a href="/Account/Register" class="btn btn-outline-primary">Registrieren</a>
+                </div>
+            </div>
+        </div>
+    </NotAuthorized>
+</AuthorizeView>
+
+@code {
+    private List<PlayerStatistics>? playerStats;
+    private List<Game>? recentGames;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var players = await PlayerService.GetAllPlayersAsync();
+        recentGames = await GameService.GetAllGamesAsync();
+        
+        var wins = await GameService.GetPlayerWinsAsync();
+        var rankDistribution = await GameService.GetPlayerRankDistributionAsync();
+
+        playerStats = new List<PlayerStatistics>();
+
+        foreach (var player in players)
+        {
+            var playerGames = recentGames
+                .SelectMany(g => g.GamePlayers)
+                .Where(gp => gp.PlayerId == player.Id)
+                .ToList();
+
+            if (playerGames.Any())
+            {
+                var stat = new PlayerStatistics
+                {
+                    PlayerId = player.Id,
+                    PlayerName = player.Name,
+                    TotalGames = playerGames.Count,
+                    Wins = wins.ContainsKey(player.Id) ? wins[player.Id] : 0,
+                    AverageRank = playerGames.Average(gp => gp.Rank)
+                };
+                playerStats.Add(stat);
+            }
+        }
+    }
+
+    private class PlayerStatistics
+    {
+        public int PlayerId { get; set; }
+        public string PlayerName { get; set; } = string.Empty;
+        public int TotalGames { get; set; }
+        public int Wins { get; set; }
+        public double WinRate => TotalGames > 0 ? (double)Wins / TotalGames : 0;
+        public double AverageRank { get; set; }
+    }
+}
