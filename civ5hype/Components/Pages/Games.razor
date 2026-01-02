@@ -381,9 +381,9 @@ else
 
     private void RemoveScreenshot()
     {
-        if (editingGame != null && !string.IsNullOrEmpty(editingGame.ScreenshotPath))
+        if (editingGame != null)
         {
-            FileUploadService.DeleteScreenshot(editingGame.ScreenshotPath);
+            editingGame.ScreenshotData = null;
             editingGame.ScreenshotPath = null;
         }
     }
