@@ -18,13 +18,9 @@ WORKDIR /app
 # Copy published app
 COPY --from=build /app/publish .
 
-# Copy database from source (from root of repo) as a template
-# Cache bust: 2026-01-02-19:10
-COPY civ5hype.db ./civ5hype-template.db
-
 # Expose port - Railway provides PORT env variable
 ENV ASPNETCORE_URLS=http://+:${PORT:-5000}
 
-# Copy template DB to working DB on startup (only if not exists)
-ENTRYPOINT ["/bin/sh", "-c", "if [ ! -f /app/civ5hype.db ]; then cp /app/civ5hype-template.db /app/civ5hype.db; fi && dotnet civ5hype.dll"]
+# Start the application (migrations will be applied automatically)
+ENTRYPOINT ["dotnet", "civ5hype.dll"]
 

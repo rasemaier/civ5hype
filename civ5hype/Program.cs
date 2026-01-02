@@ -4,6 +4,7 @@ using civ5hype.Data;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -50,6 +51,36 @@ builder.Services.AddScoped<civ5hype.Services.UserService>();
 builder.Services.AddScoped<civ5hype.Services.FileUploadService>();
 
 var app = builder.Build();
+
+// Ensure database is created and apply migrations
+using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+    db.Database.Migrate(); // Apply pending migrations
+    
+    // Create admin user if not exists
+    var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+    var adminEmail = "admin@civ.ch";
+    var adminUser = await userManager.FindByEmailAsync(adminEmail);
+    
+    if (adminUser == null)
+    {
+        adminUser = new ApplicationUser
+        {
+            UserName = adminEmail,
+            Email = adminEmail,
+            EmailConfirmed = true,
+            Role = civ5hype.Data.Enums.UserRole.Admin
+        };
+        
+        var result = await userManager.CreateAsync(adminUser, "Admin123!");
+        
+        if (result.Succeeded)
+        {
+            Console.WriteLine($"✅ Admin user created: {adminEmail}");
+        }
+    }
+}
 
 // Configure for Railway deployment
 var port = Environment.GetEnvironmentVariable("PORT") ?? "5000";
