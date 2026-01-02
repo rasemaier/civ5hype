@@ -1,0 +1,8 @@
+civ5hype/bin/
+civ5hype/obj/
+civ5hype/civ5hype/bin/
+civ5hype/civ5hype/obj/
+backups/
+*.db-shm
+*.db-wal
+

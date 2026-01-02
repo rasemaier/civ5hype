@@ -51,6 +51,10 @@ builder.Services.AddScoped<civ5hype.Services.FileUploadService>();
 
 var app = builder.Build();
 
+// Configure for Railway deployment
+var port = Environment.GetEnvironmentVariable("PORT") ?? "5000";
+app.Urls.Add($"http://0.0.0.0:{port}");
+
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
