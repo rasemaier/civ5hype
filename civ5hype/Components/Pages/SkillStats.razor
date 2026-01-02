@@ -1,0 +1,344 @@
+@page "/skill-stats"
+@using civ5hype.Data.Models
+@using civ5hype.Data.Enums
+@using civ5hype.Services
+@inject GameService GameService
+@inject PlayerService PlayerService
+@rendermode InteractiveServer
+
+<PageTitle>Skill-Statistiken</PageTitle>
+
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow-lg border-0">
+                <div class="card-header bg-gradient text-white" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                    <h3 class="mb-0">🎯 Skill-Level Statistiken</h3>
+                    <p class="mb-0 small">Gewichtete Statistiken basierend auf Gegner-Stärke</p>
+                </div>
+                <div class="card-body">
+                    @if (games == null || players == null)
+                    {
+                        <div class="text-center">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Lädt...</span>
+                            </div>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="row">
+                            <!-- Gewichtete Rangliste -->
+                            <div class="col-md-12 mb-4">
+                                <div class="card bg-light">
+                                    <div class="card-header bg-primary text-white">
+                                        <h5 class="mb-0">🏆 Gewichtete Rangliste</h5>
+                                        <small>Siege gegen stärkere Gegner zählen mehr!</small>
+                                    </div>
+                                    <div class="card-body">
+                                        @if (GetWeightedRankings().Any())
+                                        {
+                                            <table class="table table-hover">
+                                                <thead>
+                                                    <tr>
+                                                        <th>Rang</th>
+                                                        <th>Spieler</th>
+                                                        <th>Spiele</th>
+                                                        <th>Siege</th>
+                                                        <th>Gewichtete Punkte</th>
+                                                        <th>Ø Gegner-Stärke</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    @{
+                                                        int rank = 1;
+                                                    }
+                                                    @foreach (var stat in GetWeightedRankings())
+                                                    {
+                                                        <tr>
+                                                            <td>
+                                                                @if (rank == 1)
+                                                                {
+                                                                    <span style="font-size: 1.5em;">🥇</span>
+                                                                }
+                                                                else if (rank == 2)
+                                                                {
+                                                                    <span style="font-size: 1.5em;">🥈</span>
+                                                                }
+                                                                else if (rank == 3)
+                                                                {
+                                                                    <span style="font-size: 1.5em;">🥉</span>
+                                                                }
+                                                                else
+                                                                {
+                                                                    <strong>@rank.</strong>
+                                                                }
+                                                            </td>
+                                                            <td><strong>@stat.PlayerName</strong></td>
+                                                            <td>@stat.TotalGames</td>
+                                                            <td><span class="badge bg-success">@stat.Wins</span></td>
+                                                            <td><span class="badge bg-warning text-dark">@stat.WeightedPoints.ToString("F1")</span></td>
+                                                            <td>@GetSkillBadge(stat.AverageOpponentSkill)</td>
+                                                        </tr>
+                                                        rank++;
+                                                    }
+                                                </tbody>
+                                            </table>
+                                        }
+                                        else
+                                        {
+                                            <p class="text-muted">Noch keine Spiele mit Skill-Level erfasst.</p>
+                                        }
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Skill-Level Verteilung -->
+                            <div class="col-md-6 mb-4">
+                                <div class="card">
+                                    <div class="card-header bg-info text-white">
+                                        <h5 class="mb-0">📊 Skill-Level Verteilung</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        @if (GetSkillDistribution().Any())
+                                        {
+                                            <table class="table">
+                                                <thead>
+                                                    <tr>
+                                                        <th>Skill-Level</th>
+                                                        <th>Anzahl Spiele</th>
+                                                        <th>Anteil</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    @foreach (var dist in GetSkillDistribution())
+                                                    {
+                                                        <tr>
+                                                            <td>@GetSkillBadge(dist.SkillLevel)</td>
+                                                            <td>@dist.Count</td>
+                                                            <td>
+                                                                <div class="progress">
+                                                                    <div class="progress-bar" role="progressbar" style="width: @dist.Percentage%">
+                                                                        @dist.Percentage.ToString("F0")%
+                                                                    </div>
+                                                                </div>
+                                                            </td>
+                                                        </tr>
+                                                    }
+                                                </tbody>
+                                            </table>
+                                        }
+                                        else
+                                        {
+                                            <p class="text-muted">Noch keine Daten verfügbar.</p>
+                                        }
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Härteste Siege -->
+                            <div class="col-md-6 mb-4">
+                                <div class="card">
+                                    <div class="card-header bg-danger text-white">
+                                        <h5 class="mb-0">💪 Härteste Siege</h5>
+                                        <small>Siege gegen die stärksten Gegner</small>
+                                    </div>
+                                    <div class="card-body">
+                                        @if (GetHardestWins().Any())
+                                        {
+                                            <table class="table table-sm">
+                                                <thead>
+                                                    <tr>
+                                                        <th>Spieler</th>
+                                                        <th>Gegner-Stärke</th>
+                                                        <th>Datum</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    @foreach (var win in GetHardestWins().Take(10))
+                                                    {
+                                                        <tr>
+                                                            <td><strong>@win.PlayerName</strong></td>
+                                                            <td>@GetSkillBadge(win.OpponentStrength)</td>
+                                                            <td><small>@win.Date.ToString("dd.MM.yyyy")</small></td>
+                                                        </tr>
+                                                    }
+                                                </tbody>
+                                            </table>
+                                        }
+                                        else
+                                        {
+                                            <p class="text-muted">Noch keine Daten verfügbar.</p>
+                                        }
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private List<Game>? games;
+    private List<Player>? players;
+
+    protected override async Task OnInitializedAsync()
+    {
+        games = await GameService.GetAllGamesAsync();
+        players = await PlayerService.GetAllPlayersAsync();
+    }
+
+    private List<WeightedPlayerStat> GetWeightedRankings()
+    {
+        if (games == null || players == null) return new List<WeightedPlayerStat>();
+
+        return players.Select(p =>
+        {
+            var playerGames = games
+                .SelectMany(g => g.GamePlayers)
+                .Where(gp => gp.PlayerId == p.Id && gp.SkillLevel.HasValue)
+                .ToList();
+
+            if (!playerGames.Any()) return null;
+
+            var wins = playerGames.Count(gp => gp.IsWinner);
+            var weightedPoints = 0.0;
+
+            foreach (var gp in playerGames.Where(gp => gp.IsWinner))
+            {
+                var game = games.First(g => g.Id == gp.GameId);
+                var opponents = game.GamePlayers.Where(ogp => ogp.PlayerId != p.Id && ogp.SkillLevel.HasValue).ToList();
+                
+                if (opponents.Any())
+                {
+                    var avgOpponentSkill = opponents.Average(ogp => (int)ogp.SkillLevel!.Value);
+                    weightedPoints += avgOpponentSkill;
+                }
+                else
+                {
+                    weightedPoints += 1.0; // Base point if no skill levels
+                }
+            }
+
+            var allOpponents = games
+                .Where(g => g.GamePlayers.Any(gp => gp.PlayerId == p.Id))
+                .SelectMany(g => g.GamePlayers)
+                .Where(gp => gp.PlayerId != p.Id && gp.SkillLevel.HasValue)
+                .ToList();
+
+            var avgOpponentSkill = allOpponents.Any() 
+                ? allOpponents.Average(gp => (int)gp.SkillLevel!.Value) 
+                : 0.0;
+
+            return new WeightedPlayerStat
+            {
+                PlayerName = p.Name,
+                TotalGames = playerGames.Count,
+                Wins = wins,
+                WeightedPoints = weightedPoints,
+                AverageOpponentSkill = avgOpponentSkill
+            };
+        })
+        .Where(s => s != null)
+        .OrderByDescending(s => s!.WeightedPoints)
+        .ToList()!;
+    }
+
+    private List<SkillDistribution> GetSkillDistribution()
+    {
+        if (games == null) return new List<SkillDistribution>();
+
+        var allSkills = games
+            .SelectMany(g => g.GamePlayers)
+            .Where(gp => gp.SkillLevel.HasValue)
+            .ToList();
+
+        if (!allSkills.Any()) return new List<SkillDistribution>();
+
+        var total = allSkills.Count;
+
+        return Enum.GetValues<SkillLevel>()
+            .Select(skill =>
+            {
+                var count = allSkills.Count(gp => gp.SkillLevel == skill);
+                return new SkillDistribution
+                {
+                    SkillLevel = (double)(int)skill,
+                    Count = count,
+                    Percentage = (count * 100.0) / total
+                };
+            })
+            .Where(d => d.Count > 0)
+            .OrderBy(d => d.SkillLevel)
+            .ToList();
+    }
+
+    private List<HardestWin> GetHardestWins()
+    {
+        if (games == null) return new List<HardestWin>();
+
+        return games
+            .SelectMany(g => g.GamePlayers
+                .Where(gp => gp.IsWinner && gp.SkillLevel.HasValue)
+                .Select(gp =>
+                {
+                    var opponents = g.GamePlayers
+                        .Where(ogp => ogp.PlayerId != gp.PlayerId && ogp.SkillLevel.HasValue)
+                        .ToList();
+
+                    if (!opponents.Any()) return null;
+
+                    return new HardestWin
+                    {
+                        PlayerName = gp.Player?.Name ?? "Unbekannt",
+                        OpponentStrength = opponents.Average(ogp => (int)ogp.SkillLevel!.Value),
+                        Date = g.PlayedOn
+                    };
+                }))
+            .Where(w => w != null)
+            .OrderByDescending(w => w!.OpponentStrength)
+            .ToList()!;
+    }
+
+    private string GetSkillBadge(double skillValue)
+    {
+        if (skillValue == 0) return "<span class='badge bg-secondary'>-</span>";
+
+        var skill = (SkillLevel)Math.Round(skillValue);
+        return skill switch
+        {
+            SkillLevel.Neuling => "<span class='badge bg-success'>🟢 Neuling</span>",
+            SkillLevel.Okay => "<span class='badge bg-primary'>🔵 Okay</span>",
+            SkillLevel.Gut => "<span class='badge bg-warning'>🟡 Gut</span>",
+            SkillLevel.SehrGut => "<span class='badge bg-danger'>🔴 Sehr Gut</span>",
+            _ => "<span class='badge bg-secondary'>-</span>"
+        };
+    }
+
+    private class WeightedPlayerStat
+    {
+        public string PlayerName { get; set; } = string.Empty;
+        public int TotalGames { get; set; }
+        public int Wins { get; set; }
+        public double WeightedPoints { get; set; }
+        public double AverageOpponentSkill { get; set; }
+    }
+
+    private class SkillDistribution
+    {
+        public double SkillLevel { get; set; }
+        public int Count { get; set; }
+        public double Percentage { get; set; }
+    }
+
+    private class HardestWin
+    {
+        public string PlayerName { get; set; } = string.Empty;
+        public double OpponentStrength { get; set; }
+        public DateTime Date { get; set; }
+    }
+}
+
