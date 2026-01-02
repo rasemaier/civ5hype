@@ -19,6 +19,7 @@ WORKDIR /app
 COPY --from=build /app/publish .
 
 # Copy database from source (from root of repo) as a template
+# Cache bust: 2026-01-02-19:10
 COPY civ5hype.db ./civ5hype-template.db
 
 # Expose port - Railway provides PORT env variable
