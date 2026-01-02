@@ -1,0 +1,205 @@
+@page "/wonder-roll"
+@using civ5hype.Services
+@inject PlayerService PlayerService
+@rendermode InteractiveServer
+
+<PageTitle>🎲 Wunder-Würfel</PageTitle>
+
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow-lg border-0">
+                <div class="card-header bg-warning text-dark">
+                    <h3 class="mb-0">🎲 Wer bekommt das Wunder?</h3>
+                    <p class="mb-0 small">Wähle 2-8 Spieler aus und würfle!</p>
+                </div>
+                <div class="card-body">
+                    @if (players == null)
+                    {
+                        <div class="text-center">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Lädt...</span>
+                            </div>
+                        </div>
+                    }
+                    else if (!players.Any())
+                    {
+                        <div class="alert alert-info">
+                            <i class="bi bi-info-circle"></i> Keine Spieler vorhanden. Erstelle zuerst Spieler!
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="row mb-4">
+                            <div class="col-12">
+                                <h5>Spieler auswählen:</h5>
+                                <div class="row">
+                                    @foreach (var player in players)
+                                    {
+                                        <div class="col-md-3 col-sm-6 mb-2">
+                                            <div class="form-check">
+                                                <input class="form-check-input" 
+                                                       type="checkbox" 
+                                                       id="player-@player.Id" 
+                                                       checked="@selectedPlayerIds.Contains(player.Id)"
+                                                       @onchange="@(() => TogglePlayer(player.Id))">
+                                                <label class="form-check-label" for="player-@player.Id">
+                                                    @player.Name
+                                                </label>
+                                            </div>
+                                        </div>
+                                    }
+                                </div>
+                            </div>
+                        </div>
+
+                        @if (selectedPlayerIds.Count < 2)
+                        {
+                            <div class="alert alert-warning">
+                                <i class="bi bi-exclamation-triangle"></i> Wähle mindestens 2 Spieler aus!
+                            </div>
+                        }
+                        else if (selectedPlayerIds.Count > 8)
+                        {
+                            <div class="alert alert-warning">
+                                <i class="bi bi-exclamation-triangle"></i> Maximal 8 Spieler erlaubt!
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="text-center mb-4">
+                                <button class="btn btn-warning btn-lg" 
+                                        @onclick="RollDice" 
+                                        disabled="@isRolling">
+                                    @if (isRolling)
+                                    {
+                                        <span class="spinner-border spinner-border-sm me-2"></span>
+                                        <span>Würfelt...</span>
+                                    }
+                                    else
+                                    {
+                                        <span>🎲 Würfeln!</span>
+                                    }
+                                </button>
+                            </div>
+
+                            @if (rollResults.Any())
+                            {
+                                <div class="card bg-light">
+                                    <div class="card-body">
+                                        <h5 class="card-title">Würfel-Ergebnisse:</h5>
+                                        <div class="table-responsive">
+                                            <table class="table table-hover">
+                                                <thead>
+                                                    <tr>
+                                                        <th>Platz</th>
+                                                        <th>Spieler</th>
+                                                        <th>Würfel (1-10)</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    @foreach (var (result, index) in rollResults.Select((r, i) => (r, i)))
+                                                    {
+                                                        <tr class="@(index == 0 ? "table-success fw-bold" : "")">
+                                                            <td>
+                                                                @if (index == 0)
+                                                                {
+                                                                    <span class="badge bg-success">🏆 Gewinner!</span>
+                                                                }
+                                                                else
+                                                                {
+                                                                    <span>@(index + 1).</span>
+                                                                }
+                                                            </td>
+                                                            <td>@result.PlayerName</td>
+                                                            <td>
+                                                                <span class="badge bg-primary fs-5">@result.Roll</span>
+                                                            </td>
+                                                        </tr>
+                                                    }
+                                                </tbody>
+                                            </table>
+                                        </div>
+
+                                        @if (rollResults.Any())
+                                        {
+                                            <div class="alert alert-success mt-3">
+                                                <h4 class="alert-heading">🎉 @rollResults.First().PlayerName bekommt das Wunder!</h4>
+                                                <p class="mb-0">Gewürfelt: <strong>@rollResults.First().Roll</strong></p>
+                                            </div>
+                                        }
+                                    </div>
+                                </div>
+                            }
+                        }
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private List<civ5hype.Data.Models.Player>? players;
+    private HashSet<int> selectedPlayerIds = new();
+    private List<RollResult> rollResults = new();
+    private bool isRolling = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        players = await PlayerService.GetAllPlayersAsync();
+    }
+
+    private void TogglePlayer(int playerId)
+    {
+        if (selectedPlayerIds.Contains(playerId))
+        {
+            selectedPlayerIds.Remove(playerId);
+        }
+        else
+        {
+            if (selectedPlayerIds.Count < 8)
+            {
+                selectedPlayerIds.Add(playerId);
+            }
+        }
+    }
+
+    private async Task RollDice()
+    {
+        if (selectedPlayerIds.Count < 2 || selectedPlayerIds.Count > 8)
+            return;
+
+        isRolling = true;
+        rollResults.Clear();
+        StateHasChanged();
+
+        // Simulate rolling animation
+        await Task.Delay(1000);
+
+        var random = new Random();
+        var selectedPlayers = players!.Where(p => selectedPlayerIds.Contains(p.Id)).ToList();
+
+        foreach (var player in selectedPlayers)
+        {
+            var roll = random.Next(1, 11); // 1-10
+            rollResults.Add(new RollResult
+            {
+                PlayerName = player.Name,
+                Roll = roll
+            });
+        }
+
+        // Sort by roll (highest first)
+        rollResults = rollResults.OrderByDescending(r => r.Roll).ToList();
+
+        isRolling = false;
+    }
+
+    private class RollResult
+    {
+        public string PlayerName { get; set; } = string.Empty;
+        public int Roll { get; set; }
+    }
+}
+
