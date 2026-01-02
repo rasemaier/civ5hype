@@ -52,11 +52,24 @@ builder.Services.AddScoped<civ5hype.Services.FileUploadService>();
 
 var app = builder.Build();
 
-// Ensure database is created and apply migrations
+// Ensure database is created and apply migrations (only if needed)
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-    db.Database.Migrate(); // Apply pending migrations
+    
+    // Check if database exists and has pending migrations
+    var pendingMigrations = await db.Database.GetPendingMigrationsAsync();
+    if (pendingMigrations.Any())
+    {
+        Console.WriteLine($"⚠️ Applying {pendingMigrations.Count()} pending migrations...");
+        await db.Database.MigrateAsync(); // Apply pending migrations
+        Console.WriteLine("✅ Migrations applied successfully");
+    }
+    else
+    {
+        // Ensure database is created if it doesn't exist
+        await db.Database.EnsureCreatedAsync();
+    }
     
     // Create admin user if not exists
     var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
