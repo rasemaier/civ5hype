@@ -1,9 +1,0 @@
-[build]
-builder = "nixpacks"
-buildCommand = "cd civ5hype && dotnet publish -c Release -o out"
-
-[deploy]
-startCommand = "cd civ5hype/out && dotnet civ5hype.dll"
-restartPolicyType = "on_failure"
-restartPolicyMaxRetries = 10
-
