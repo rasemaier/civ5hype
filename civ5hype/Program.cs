@@ -30,15 +30,25 @@ var connectionString = builder.Configuration.GetConnectionString("DefaultConnect
 var databaseUrl = Environment.GetEnvironmentVariable("DATABASE_URL");
 if (!string.IsNullOrEmpty(databaseUrl) && databaseUrl.StartsWith("postgres"))
 {
-    // Railway PostgreSQL - convert postgres:// to postgresql://
-    if (databaseUrl.StartsWith("postgres://"))
+    try
     {
-        databaseUrl = databaseUrl.Replace("postgres://", "postgresql://");
+        // Parse Railway DATABASE_URL (format: postgres://user:password@host:port/database)
+        var uri = new Uri(databaseUrl);
+        var userInfo = uri.UserInfo.Split(':');
+        
+        var npgsqlConnectionString = $"Host={uri.Host};Port={uri.Port};Database={uri.AbsolutePath.TrimStart('/')};Username={userInfo[0]};Password={userInfo[1]};SSL Mode=Require;Trust Server Certificate=true";
+        
+        Console.WriteLine($"✅ Using PostgreSQL database at {uri.Host}");
+        builder.Services.AddDbContext<ApplicationDbContext>(options =>
+            options.UseNpgsql(npgsqlConnectionString));
     }
-    
-    Console.WriteLine("✅ Using PostgreSQL database");
-    builder.Services.AddDbContext<ApplicationDbContext>(options =>
-        options.UseNpgsql(databaseUrl));
+    catch (Exception ex)
+    {
+        Console.WriteLine($"❌ Failed to parse DATABASE_URL: {ex.Message}");
+        Console.WriteLine("Falling back to SQLite");
+        builder.Services.AddDbContext<ApplicationDbContext>(options =>
+            options.UseSqlite(connectionString));
+    }
 }
 else
 {
