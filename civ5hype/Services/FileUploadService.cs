@@ -34,20 +34,23 @@ namespace civ5hype.Services
                     return null;
                 }
 
-                // Create uploads directory if it doesn't exist
-                var uploadsPath = Path.Combine(_environment.WebRootPath, "uploads", "screenshots");
-                Directory.CreateDirectory(uploadsPath);
+                // Convert to Base64 for database storage
+                using var memoryStream = new MemoryStream();
+                await file.OpenReadStream(MaxFileSize).CopyToAsync(memoryStream);
+                var base64 = Convert.ToBase64String(memoryStream.ToArray());
+                
+                // Determine MIME type
+                var mimeType = extension switch
+                {
+                    ".jpg" or ".jpeg" => "image/jpeg",
+                    ".png" => "image/png",
+                    ".gif" => "image/gif",
+                    ".webp" => "image/webp",
+                    _ => "image/jpeg"
+                };
 
-                // Generate unique filename
-                var fileName = $"{Guid.NewGuid()}{extension}";
-                var filePath = Path.Combine(uploadsPath, fileName);
-
-                // Save file
-                await using var fileStream = new FileStream(filePath, FileMode.Create);
-                await file.OpenReadStream(MaxFileSize).CopyToAsync(fileStream);
-
-                // Return relative path
-                return $"/uploads/screenshots/{fileName}";
+                // Return data URL
+                return $"data:{mimeType};base64,{base64}";
             }
             catch (Exception ex)
             {

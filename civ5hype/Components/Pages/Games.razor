@@ -36,9 +36,13 @@ else
                         <strong>@game.PlayedOn.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</strong>
                     </div>
                     <div class="card-body">
-                        @if (!string.IsNullOrEmpty(game.ScreenshotPath))
+                        @if (!string.IsNullOrEmpty(game.ScreenshotData))
                         {
-                            <img src="@game.ScreenshotPath" class="img-fluid mb-2" alt="Screenshot" style="max-height: 200px;" />
+                            <img src="@game.ScreenshotData" class="img-fluid mb-2" alt="Screenshot" style="max-height: 200px; object-fit: cover;" />
+                        }
+                        else if (!string.IsNullOrEmpty(game.ScreenshotPath))
+                        {
+                            <img src="@game.ScreenshotPath" class="img-fluid mb-2" alt="Screenshot" style="max-height: 200px; object-fit: cover;" />
                         }
                         @if (!string.IsNullOrEmpty(game.Comment))
                         {
@@ -96,7 +100,14 @@ else
                     </div>
                     <div class="mb-3">
                         <label class="form-label">Screenshot</label>
-                        @if (!string.IsNullOrEmpty(editingGame!.ScreenshotPath))
+                        @if (!string.IsNullOrEmpty(editingGame!.ScreenshotData))
+                        {
+                            <div class="mb-2">
+                                <img src="@editingGame.ScreenshotData" class="img-thumbnail" style="max-height: 200px;" alt="Screenshot" />
+                                <button type="button" class="btn btn-sm btn-danger ms-2" @onclick="RemoveScreenshot">Entfernen</button>
+                            </div>
+                        }
+                        else if (!string.IsNullOrEmpty(editingGame!.ScreenshotPath))
                         {
                             <div class="mb-2">
                                 <img src="@editingGame.ScreenshotPath" class="img-thumbnail" style="max-height: 200px;" alt="Screenshot" />
@@ -349,12 +360,9 @@ else
             
             if (path != null && editingGame != null)
             {
-                // Delete old screenshot if exists
-                if (!string.IsNullOrEmpty(editingGame.ScreenshotPath))
-                {
-                    FileUploadService.DeleteScreenshot(editingGame.ScreenshotPath);
-                }
-                editingGame.ScreenshotPath = path;
+                // Store as Base64 data
+                editingGame.ScreenshotData = path;
+                editingGame.ScreenshotPath = null; // Clear old path-based storage
             }
             else
             {

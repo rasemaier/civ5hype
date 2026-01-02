@@ -13,6 +13,8 @@ namespace civ5hype.Data.Models
 
         public string? ScreenshotPath { get; set; }
 
+        public string? ScreenshotData { get; set; } // Base64 encoded image
+
         [Required]
         public string CreatedById { get; set; } = string.Empty;
 
