@@ -18,8 +18,8 @@ WORKDIR /app
 # Copy published app
 COPY --from=build /app/publish .
 
-# Copy database from source (not from build stage, from local filesystem)
-COPY civ5hype/civ5hype.db ./civ5hype.db
+# Copy database from source (from root of repo)
+COPY civ5hype.db ./civ5hype.db
 
 # Expose port - Railway provides PORT env variable
 ENV ASPNETCORE_URLS=http://+:${PORT:-5000}
