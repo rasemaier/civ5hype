@@ -44,10 +44,10 @@ namespace Microsoft.AspNetCore.Routing
             accountGroup.MapPost("/Logout", async (
                 ClaimsPrincipal user,
                 [FromServices] SignInManager<ApplicationUser> signInManager,
-                [FromForm] string returnUrl) =>
+                [FromForm] string? returnUrl) =>
             {
                 await signInManager.SignOutAsync();
-                return TypedResults.LocalRedirect($"~/{returnUrl}");
+                return TypedResults.LocalRedirect($"~/{returnUrl ?? string.Empty}");
             });
 
             accountGroup.MapPost("/PasskeyCreationOptions", async (
