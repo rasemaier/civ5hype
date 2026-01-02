@@ -10,16 +10,24 @@
 @inject FileUploadService FileUploadService
 @inject AuthenticationStateProvider AuthenticationStateProvider
 @inject NavigationManager Navigation
-@attribute [Authorize]
 @rendermode InteractiveServer
 
 <PageTitle>Spiele</PageTitle>
 
 <h1>Spiele</h1>
 
-<div class="mb-3">
-    <button class="btn btn-primary" @onclick="ShowAddGame">Neues Spiel</button>
-</div>
+<AuthorizeView>
+    <Authorized>
+        <div class="mb-3">
+            <button class="btn btn-primary" @onclick="ShowAddGame">Neues Spiel</button>
+        </div>
+    </Authorized>
+    <NotAuthorized>
+        <div class="alert alert-info mb-3">
+            <strong>ℹ️ Info:</strong> Melde dich an, um Spiele zu erfassen und zu bearbeiten.
+        </div>
+    </NotAuthorized>
+</AuthorizeView>
 
 @if (games == null)
 {
@@ -71,13 +79,17 @@ else
                         </ol>
                         <small class="text-muted">Erstellt von: @game.CreatedBy?.UserName</small>
                     </div>
-                    <div class="card-footer">
-                        @if (canEdit)
-                        {
-                            <button class="btn btn-sm btn-warning" @onclick="() => EditGame(game)">Bearbeiten</button>
-                            <button class="btn btn-sm btn-danger" @onclick="() => DeleteGame(game.Id)">Löschen</button>
-                        }
-                    </div>
+                    <AuthorizeView>
+                        <Authorized>
+                            <div class="card-footer">
+                                @if (canEdit)
+                                {
+                                    <button class="btn btn-sm btn-warning" @onclick="() => EditGame(game)">Bearbeiten</button>
+                                    <button class="btn btn-sm btn-danger" @onclick="() => DeleteGame(game.Id)">Löschen</button>
+                                }
+                            </div>
+                        </Authorized>
+                    </AuthorizeView>
                 </div>
             </div>
         }
