@@ -28,15 +28,22 @@ var connectionString = builder.Configuration.GetConnectionString("DefaultConnect
 
 // Use PostgreSQL if DATABASE_URL is set (Railway), otherwise SQLite (local development)
 var databaseUrl = Environment.GetEnvironmentVariable("DATABASE_URL");
-if (!string.IsNullOrEmpty(databaseUrl))
+if (!string.IsNullOrEmpty(databaseUrl) && databaseUrl.StartsWith("postgres"))
 {
-    // Railway PostgreSQL
+    // Railway PostgreSQL - convert postgres:// to postgresql://
+    if (databaseUrl.StartsWith("postgres://"))
+    {
+        databaseUrl = databaseUrl.Replace("postgres://", "postgresql://");
+    }
+    
+    Console.WriteLine("✅ Using PostgreSQL database");
     builder.Services.AddDbContext<ApplicationDbContext>(options =>
         options.UseNpgsql(databaseUrl));
 }
 else
 {
     // Local SQLite
+    Console.WriteLine("✅ Using SQLite database");
     builder.Services.AddDbContext<ApplicationDbContext>(options =>
         options.UseSqlite(connectionString));
 }
