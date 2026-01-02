@@ -52,46 +52,72 @@ builder.Services.AddScoped<civ5hype.Services.FileUploadService>();
 
 var app = builder.Build();
 
-// Ensure database is created and apply migrations (only if needed)
+// Apply migrations and ensure admin user exists
 using (var scope = app.Services.CreateScope())
 {
-    var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-    
-    // Check if database exists and has pending migrations
-    var pendingMigrations = await db.Database.GetPendingMigrationsAsync();
-    if (pendingMigrations.Any())
+    try
     {
-        Console.WriteLine($"⚠️ Applying {pendingMigrations.Count()} pending migrations...");
-        await db.Database.MigrateAsync(); // Apply pending migrations
-        Console.WriteLine("✅ Migrations applied successfully");
-    }
-    else
-    {
-        // Ensure database is created if it doesn't exist
-        await db.Database.EnsureCreatedAsync();
-    }
-    
-    // Create admin user if not exists
-    var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
-    var adminEmail = "admin@civ.ch";
-    var adminUser = await userManager.FindByEmailAsync(adminEmail);
-    
-    if (adminUser == null)
-    {
-        adminUser = new ApplicationUser
-        {
-            UserName = adminEmail,
-            Email = adminEmail,
-            EmailConfirmed = true,
-            Role = civ5hype.Data.Enums.UserRole.Admin
-        };
+        var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
         
-        var result = await userManager.CreateAsync(adminUser, "Admin123!");
-        
-        if (result.Succeeded)
+        // Check if database can be connected to
+        if (await db.Database.CanConnectAsync())
         {
-            Console.WriteLine($"✅ Admin user created: {adminEmail}");
+            // Check for pending migrations
+            var pendingMigrations = await db.Database.GetPendingMigrationsAsync();
+            if (pendingMigrations.Any())
+            {
+                Console.WriteLine($"⚠️ Applying {pendingMigrations.Count()} pending migrations...");
+                await db.Database.MigrateAsync();
+                Console.WriteLine("✅ Migrations applied successfully");
+            }
+            else
+            {
+                Console.WriteLine("✅ Database is up to date");
+            }
         }
+        else
+        {
+            // Database doesn't exist, create it with migrations
+            Console.WriteLine("⚠️ Database doesn't exist, creating...");
+            await db.Database.MigrateAsync();
+            Console.WriteLine("✅ Database created successfully");
+        }
+        
+        // Create admin user if not exists
+        var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+        var adminEmail = "admin@civ.ch";
+        var adminUser = await userManager.FindByEmailAsync(adminEmail);
+        
+        if (adminUser == null)
+        {
+            adminUser = new ApplicationUser
+            {
+                UserName = adminEmail,
+                Email = adminEmail,
+                EmailConfirmed = true,
+                Role = civ5hype.Data.Enums.UserRole.Admin
+            };
+            
+            var result = await userManager.CreateAsync(adminUser, "Admin123!");
+            
+            if (result.Succeeded)
+            {
+                Console.WriteLine($"✅ Admin user created: {adminEmail}");
+            }
+            else
+            {
+                Console.WriteLine($"❌ Failed to create admin user: {string.Join(", ", result.Errors.Select(e => e.Description))}");
+            }
+        }
+        else
+        {
+            Console.WriteLine($"✅ Admin user already exists: {adminEmail}");
+        }
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"❌ Database initialization error: {ex.Message}");
+        throw;
     }
 }
 
