@@ -270,6 +270,9 @@ namespace civ5hype.Migrations
                     b.Property<string>("ScreenshotPath")
                         .HasColumnType("text");
 
+                    b.Property<int?>("WinRound")
+                        .HasColumnType("integer");
+
                     b.HasKey("Id");
 
                     b.HasIndex("CreatedById");

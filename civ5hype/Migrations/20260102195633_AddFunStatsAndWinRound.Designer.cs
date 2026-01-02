@@ -12,8 +12,8 @@ using civ5hype.Data;
 namespace civ5hype.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20260102192519_AddFunStatistics")]
-    partial class AddFunStatistics
+    [Migration("20260102195633_AddFunStatsAndWinRound")]
+    partial class AddFunStatsAndWinRound
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -272,6 +272,9 @@ namespace civ5hype.Migrations
 
                     b.Property<string>("ScreenshotPath")
                         .HasColumnType("text");
+
+                    b.Property<int?>("WinRound")
+                        .HasColumnType("integer");
 
                     b.HasKey("Id");
 
