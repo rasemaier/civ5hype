@@ -12,7 +12,7 @@ using civ5hype.Data;
 namespace civ5hype.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20260102191947_AddFunStatistics")]
+    [Migration("20260102192519_AddFunStatistics")]
     partial class AddFunStatistics
     {
         /// <inheritdoc />
@@ -290,12 +290,18 @@ namespace civ5hype.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
+                    b.Property<bool>("Betrueger")
+                        .HasColumnType("boolean");
+
                     b.Property<string>("Civilization")
                         .HasMaxLength(50)
                         .HasColumnType("character varying(50)");
 
                     b.Property<int>("GameId")
                         .HasColumnType("integer");
+
+                    b.Property<bool>("HalberSiegOpStart")
+                        .HasColumnType("boolean");
 
                     b.Property<bool>("IsWinner")
                         .HasColumnType("boolean");
@@ -305,6 +311,9 @@ namespace civ5hype.Migrations
 
                     b.Property<int>("Rank")
                         .HasColumnType("integer");
+
+                    b.Property<bool>("SiegerDerHerzen")
+                        .HasColumnType("boolean");
 
                     b.HasKey("Id");
 
