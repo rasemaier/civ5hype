@@ -1,0 +1,242 @@
+@page "/fun-stats"
+@using civ5hype.Services
+@using civ5hype.Data.Models
+@inject GameService GameService
+@inject PlayerService PlayerService
+@rendermode InteractiveServer
+
+<PageTitle>🎭 Fun-Statistiken</PageTitle>
+
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow-lg border-0">
+                <div class="card-header bg-info text-white">
+                    <h3 class="mb-0">🎭 Fun-Statistiken</h3>
+                    <p class="mb-0 small">Die unterhaltsamen Stats, die nicht in die Hauptwertung zählen!</p>
+                </div>
+                <div class="card-body">
+                    @if (games == null || players == null)
+                    {
+                        <div class="text-center">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Lädt...</span>
+                            </div>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="row">
+                            <!-- Halbe Siege (OP Start) -->
+                            <div class="col-md-6 mb-4">
+                                <div class="card bg-warning bg-opacity-10">
+                                    <div class="card-header bg-warning">
+                                        <h5 class="mb-0">⚠️ Halbe Siege (OP Start)</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <p class="text-muted small">Siege mit unfairem Startvorteil</p>
+                                        @if (GetHalbeSiege().Any())
+                                        {
+                                            <ol class="list-group list-group-numbered">
+                                                @foreach (var stat in GetHalbeSiege())
+                                                {
+                                                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                                                        @stat.PlayerName
+                                                        <span class="badge bg-warning rounded-pill">@stat.Count</span>
+                                                    </li>
+                                                }
+                                            </ol>
+                                        }
+                                        else
+                                        {
+                                            <p class="text-muted">Noch keine Einträge</p>
+                                        }
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Sieger der Herzen -->
+                            <div class="col-md-6 mb-4">
+                                <div class="card bg-danger bg-opacity-10">
+                                    <div class="card-header bg-danger text-white">
+                                        <h5 class="mb-0">❤️ Sieger der Herzen</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <p class="text-muted small">Moralische Sieger trotz Niederlage</p>
+                                        @if (GetSiegerDerHerzen().Any())
+                                        {
+                                            <ol class="list-group list-group-numbered">
+                                                @foreach (var stat in GetSiegerDerHerzen())
+                                                {
+                                                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                                                        @stat.PlayerName
+                                                        <span class="badge bg-danger rounded-pill">@stat.Count</span>
+                                                    </li>
+                                                }
+                                            </ol>
+                                        }
+                                        else
+                                        {
+                                            <p class="text-muted">Noch keine Einträge</p>
+                                        }
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Betrüger -->
+                            <div class="col-md-6 mb-4">
+                                <div class="card bg-dark bg-opacity-10">
+                                    <div class="card-header bg-dark text-white">
+                                        <h5 class="mb-0">🎭 Betrüger</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <p class="text-muted small">Erwischt beim Schummeln!</p>
+                                        @if (GetBetrueger().Any())
+                                        {
+                                            <ol class="list-group list-group-numbered">
+                                                @foreach (var stat in GetBetrueger())
+                                                {
+                                                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                                                        @stat.PlayerName
+                                                        <span class="badge bg-dark rounded-pill">@stat.Count</span>
+                                                    </li>
+                                                }
+                                            </ol>
+                                        }
+                                        else
+                                        {
+                                            <p class="text-muted">Noch keine Einträge</p>
+                                        }
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Hall of Shame/Fame -->
+                            <div class="col-md-6 mb-4">
+                                <div class="card bg-primary bg-opacity-10">
+                                    <div class="card-header bg-primary text-white">
+                                        <h5 class="mb-0">🏆 Hall of Fun</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <p class="text-muted small">Gesamte Fun-Statistiken</p>
+                                        @if (GetTotalFunStats().Any())
+                                        {
+                                            <div class="table-responsive">
+                                                <table class="table table-sm">
+                                                    <thead>
+                                                        <tr>
+                                                            <th>Spieler</th>
+                                                            <th>⚠️</th>
+                                                            <th>❤️</th>
+                                                            <th>🎭</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        @foreach (var stat in GetTotalFunStats())
+                                                        {
+                                                            <tr>
+                                                                <td><strong>@stat.PlayerName</strong></td>
+                                                                <td>@stat.HalbeSiege</td>
+                                                                <td>@stat.SiegerHerzen</td>
+                                                                <td>@stat.Betrueger</td>
+                                                            </tr>
+                                                        }
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        }
+                                        else
+                                        {
+                                            <p class="text-muted">Noch keine Einträge</p>
+                                        }
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private List<Game>? games;
+    private List<Player>? players;
+
+    protected override async Task OnInitializedAsync()
+    {
+        games = await GameService.GetAllGamesAsync();
+        players = await PlayerService.GetAllPlayersAsync();
+    }
+
+    private List<FunStat> GetHalbeSiege()
+    {
+        if (games == null) return new List<FunStat>();
+
+        return games
+            .SelectMany(g => g.GamePlayers)
+            .Where(gp => gp.HalberSiegOpStart)
+            .GroupBy(gp => gp.Player?.Name ?? "Unbekannt")
+            .Select(g => new FunStat { PlayerName = g.Key, Count = g.Count() })
+            .OrderByDescending(s => s.Count)
+            .ToList();
+    }
+
+    private List<FunStat> GetSiegerDerHerzen()
+    {
+        if (games == null) return new List<FunStat>();
+
+        return games
+            .SelectMany(g => g.GamePlayers)
+            .Where(gp => gp.SiegerDerHerzen)
+            .GroupBy(gp => gp.Player?.Name ?? "Unbekannt")
+            .Select(g => new FunStat { PlayerName = g.Key, Count = g.Count() })
+            .OrderByDescending(s => s.Count)
+            .ToList();
+    }
+
+    private List<FunStat> GetBetrueger()
+    {
+        if (games == null) return new List<FunStat>();
+
+        return games
+            .SelectMany(g => g.GamePlayers)
+            .Where(gp => gp.Betrueger)
+            .GroupBy(gp => gp.Player?.Name ?? "Unbekannt")
+            .Select(g => new FunStat { PlayerName = g.Key, Count = g.Count() })
+            .OrderByDescending(s => s.Count)
+            .ToList();
+    }
+
+    private List<TotalFunStat> GetTotalFunStats()
+    {
+        if (games == null || players == null) return new List<TotalFunStat>();
+
+        return players.Select(p => new TotalFunStat
+        {
+            PlayerName = p.Name,
+            HalbeSiege = games.SelectMany(g => g.GamePlayers).Count(gp => gp.PlayerId == p.Id && gp.HalberSiegOpStart),
+            SiegerHerzen = games.SelectMany(g => g.GamePlayers).Count(gp => gp.PlayerId == p.Id && gp.SiegerDerHerzen),
+            Betrueger = games.SelectMany(g => g.GamePlayers).Count(gp => gp.PlayerId == p.Id && gp.Betrueger)
+        })
+        .Where(s => s.HalbeSiege > 0 || s.SiegerHerzen > 0 || s.Betrueger > 0)
+        .OrderByDescending(s => s.HalbeSiege + s.SiegerHerzen + s.Betrueger)
+        .ToList();
+    }
+
+    private class FunStat
+    {
+        public string PlayerName { get; set; } = string.Empty;
+        public int Count { get; set; }
+    }
+
+    private class TotalFunStat
+    {
+        public string PlayerName { get; set; } = string.Empty;
+        public int HalbeSiege { get; set; }
+        public int SiegerHerzen { get; set; }
+        public int Betrueger { get; set; }
+    }
+}
+

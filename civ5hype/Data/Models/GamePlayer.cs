@@ -24,6 +24,11 @@ namespace civ5hype.Data.Models
 
         [StringLength(50)]
         public string? Civilization { get; set; }
+        
+        // Fun-Statistiken (zählen nicht zur Hauptstatistik)
+        public bool HalberSiegOpStart { get; set; } // Zählt nur als halber Sieg da OP Start
+        public bool SiegerDerHerzen { get; set; } // Sieger der Herzen
+        public bool Betrueger { get; set; } // Betrüger
     }
 }
 

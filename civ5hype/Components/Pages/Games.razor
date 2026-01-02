@@ -180,6 +180,33 @@ else
                                         </div>
                                     </div>
                                 </div>
+                                <div class="row mt-2">
+                                    <div class="col-12">
+                                        <div class="card bg-light">
+                                            <div class="card-body py-2">
+                                                <small class="text-muted d-block mb-1"><strong>🎭 Fun-Statistiken</strong> (zählen nicht zur Hauptwertung)</small>
+                                                <div class="form-check form-check-inline">
+                                                    <input class="form-check-input" type="checkbox" @bind="selectedPlayers[index].HalberSiegOpStart" id="halbesieg-@index" />
+                                                    <label class="form-check-label small" for="halbesieg-@index">
+                                                        ⚠️ Halber Sieg (OP Start)
+                                                    </label>
+                                                </div>
+                                                <div class="form-check form-check-inline">
+                                                    <input class="form-check-input" type="checkbox" @bind="selectedPlayers[index].SiegerDerHerzen" id="herzen-@index" />
+                                                    <label class="form-check-label small" for="herzen-@index">
+                                                        ❤️ Sieger der Herzen
+                                                    </label>
+                                                </div>
+                                                <div class="form-check form-check-inline">
+                                                    <input class="form-check-input" type="checkbox" @bind="selectedPlayers[index].Betrueger" id="betrueger-@index" />
+                                                    <label class="form-check-label small" for="betrueger-@index">
+                                                        🎭 Betrüger
+                                                    </label>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     }
@@ -250,7 +277,10 @@ else
             PlayerId = gp.PlayerId,
             Rank = gp.Rank,
             IsWinner = gp.IsWinner,
-            Civilization = gp.Civilization
+            Civilization = gp.Civilization,
+            HalberSiegOpStart = gp.HalberSiegOpStart,
+            SiegerDerHerzen = gp.SiegerDerHerzen,
+            Betrueger = gp.Betrueger
         }).ToList();
         showDialog = true;
     }
@@ -283,7 +313,10 @@ else
                                 PlayerId = selectedPlayers[i].PlayerId,
                                 Rank = i + 1,
                                 IsWinner = selectedPlayers[i].IsWinner,
-                                Civilization = selectedPlayers[i].Civilization
+                                Civilization = selectedPlayers[i].Civilization,
+                                HalberSiegOpStart = selectedPlayers[i].HalberSiegOpStart,
+                                SiegerDerHerzen = selectedPlayers[i].SiegerDerHerzen,
+                                Betrueger = selectedPlayers[i].Betrueger
                             });
                         }
                     }
@@ -303,7 +336,10 @@ else
                             PlayerId = selectedPlayers[i].PlayerId,
                             Rank = i + 1,
                             IsWinner = selectedPlayers[i].IsWinner,
-                            Civilization = selectedPlayers[i].Civilization
+                            Civilization = selectedPlayers[i].Civilization,
+                            HalberSiegOpStart = selectedPlayers[i].HalberSiegOpStart,
+                            SiegerDerHerzen = selectedPlayers[i].SiegerDerHerzen,
+                            Betrueger = selectedPlayers[i].Betrueger
                         });
                     }
                 }
@@ -396,6 +432,11 @@ else
         public int Rank { get; set; }
         public bool IsWinner { get; set; }
         public string? Civilization { get; set; }
+        
+        // Fun-Statistiken
+        public bool HalberSiegOpStart { get; set; }
+        public bool SiegerDerHerzen { get; set; }
+        public bool Betrueger { get; set; }
     }
 }
 
