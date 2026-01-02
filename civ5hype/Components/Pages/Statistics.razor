@@ -1,10 +1,10 @@
 @page "/statistics"
 @using civ5hype.Data.Models
+@using civ5hype.Data.Enums
 @using civ5hype.Services
 @using Microsoft.AspNetCore.Authorization
 @inject GameService GameService
 @inject PlayerService PlayerService
-@attribute [Authorize]
 @rendermode InteractiveServer
 
 <PageTitle>Statistiken</PageTitle>
@@ -61,6 +61,16 @@ else
                             <td>@stat.Wins</td>
                             <td>@stat.WinRate.ToString("P1")</td>
                             <td>@stat.AverageRank.ToString("F2")</td>
+                            <td>
+                                @if (stat.WeightedPoints > 0)
+                                {
+                                    <span class="badge bg-warning text-dark">@stat.WeightedPoints.ToString("F1")</span>
+                                }
+                                else
+                                {
+                                    <span class="text-muted">-</span>
+                                }
+                            </td>
                         </tr>
                         rank++;
                     }
@@ -202,6 +212,24 @@ else
 
             if (playerGames.Any())
             {
+                // Calculate weighted points
+                var weightedPoints = 0.0;
+                var winningGames = playerGames.Where(gp => gp.IsWinner).ToList();
+                
+                foreach (var gp in winningGames)
+                {
+                    var game = recentGames.First(g => g.Id == gp.GameId);
+                    var opponents = game.GamePlayers
+                        .Where(ogp => ogp.PlayerId != player.Id && ogp.SkillLevel.HasValue)
+                        .ToList();
+                    
+                    if (opponents.Any())
+                    {
+                        var avgOpponentSkill = opponents.Average(ogp => (int)ogp.SkillLevel!.Value);
+                        weightedPoints += avgOpponentSkill;
+                    }
+                }
+
                 var stat = new PlayerStatistics
                 {
                     PlayerId = player.Id,
@@ -209,6 +237,7 @@ else
                     TotalGames = playerGames.Count,
                     Wins = wins.ContainsKey(player.Id) ? wins[player.Id] : 0,
                     AverageRank = playerGames.Average(gp => gp.Rank),
+                    WeightedPoints = weightedPoints,
                     RankDistribution = rankDistribution.ContainsKey(player.Id) 
                         ? rankDistribution[player.Id] 
                         : new Dictionary<int, int>()
@@ -242,6 +271,7 @@ else
         public int Wins { get; set; }
         public double WinRate => TotalGames > 0 ? (double)Wins / TotalGames : 0;
         public double AverageRank { get; set; }
+        public double WeightedPoints { get; set; }
         public Dictionary<int, int> RankDistribution { get; set; } = new();
     }
 
