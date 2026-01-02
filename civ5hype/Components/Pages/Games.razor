@@ -241,6 +241,7 @@ else
             PlayedOn = game.PlayedOn,
             Comment = game.Comment,
             ScreenshotPath = game.ScreenshotPath,
+            ScreenshotData = game.ScreenshotData,
             CreatedById = game.CreatedById
         };
         gameDate = game.PlayedOn.ToLocalTime();
@@ -270,6 +271,7 @@ else
                     existingGame.PlayedOn = editingGame.PlayedOn;
                     existingGame.Comment = editingGame.Comment;
                     existingGame.ScreenshotPath = editingGame.ScreenshotPath;
+                    existingGame.ScreenshotData = editingGame.ScreenshotData;
                     existingGame.GamePlayers.Clear();
                     
                     for (int i = 0; i < selectedPlayers.Count; i++)
