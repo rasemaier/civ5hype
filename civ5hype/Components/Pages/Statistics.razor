@@ -138,6 +138,43 @@ else
                 </table>
             }
         </div>
+
+        @* Schnellste Siege *@
+        <div class="col-md-6 mb-4">
+            <div class="card shadow">
+                <div class="card-header bg-warning text-dark">
+                    <h4 class="mb-0">⚡ Schnellste Siege</h4>
+                </div>
+                <div class="card-body">
+                    @if (GetFastestWins().Any())
+                    {
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Spieler</th>
+                                    <th>Runde</th>
+                                    <th>Datum</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var win in GetFastestWins().Take(10))
+                                {
+                                    <tr>
+                                        <td><strong>@win.PlayerName</strong></td>
+                                        <td><span class="badge bg-warning">@win.Round</span></td>
+                                        <td><small>@win.Date.ToString("dd.MM.yyyy")</small></td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    }
+                    else
+                    {
+                        <p class="text-muted">Noch keine Spiele mit Rundenangabe erfasst.</p>
+                    }
+                </div>
+            </div>
+        </div>
     </div>
 }
 
@@ -181,6 +218,22 @@ else
         }
     }
 
+    private List<FastestWin> GetFastestWins()
+    {
+        if (recentGames == null) return new List<FastestWin>();
+
+        return recentGames
+            .Where(g => g.WinRound.HasValue)
+            .SelectMany(g => g.GamePlayers.Where(gp => gp.IsWinner).Select(gp => new FastestWin
+            {
+                PlayerName = gp.Player?.Name ?? "Unbekannt",
+                Round = g.WinRound!.Value,
+                Date = g.PlayedOn
+            }))
+            .OrderBy(w => w.Round)
+            .ToList();
+    }
+
     private class PlayerStatistics
     {
         public int PlayerId { get; set; }
@@ -190,6 +243,13 @@ else
         public double WinRate => TotalGames > 0 ? (double)Wins / TotalGames : 0;
         public double AverageRank { get; set; }
         public Dictionary<int, int> RankDistribution { get; set; } = new();
+    }
+
+    private class FastestWin
+    {
+        public string PlayerName { get; set; } = string.Empty;
+        public int Round { get; set; }
+        public DateTime Date { get; set; }
     }
 }
 

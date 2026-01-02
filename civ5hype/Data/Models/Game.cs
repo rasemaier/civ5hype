@@ -15,6 +15,9 @@ namespace civ5hype.Data.Models
 
         public string? ScreenshotData { get; set; } // Base64 encoded image
 
+        [Range(1, 9999)]
+        public int? WinRound { get; set; } // Runde in der das Spiel gewonnen wurde
+
         [Required]
         public string CreatedById { get; set; } = string.Empty;
 

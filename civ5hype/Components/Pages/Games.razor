@@ -38,15 +38,19 @@ else
                     <div class="card-body">
                         @if (!string.IsNullOrEmpty(game.ScreenshotData))
                         {
-                            <img src="@game.ScreenshotData" class="img-fluid mb-2" alt="Screenshot" style="max-height: 200px; object-fit: cover;" />
+                            <img src="@game.ScreenshotData" class="img-fluid mb-2" alt="Screenshot" style="max-height: 200px; object-fit: cover; cursor: pointer;" @onclick="() => OpenFullscreen(game.ScreenshotData)" />
                         }
                         else if (!string.IsNullOrEmpty(game.ScreenshotPath))
                         {
-                            <img src="@game.ScreenshotPath" class="img-fluid mb-2" alt="Screenshot" style="max-height: 200px; object-fit: cover;" />
+                            <img src="@game.ScreenshotPath" class="img-fluid mb-2" alt="Screenshot" style="max-height: 200px; object-fit: cover; cursor: pointer;" @onclick="() => OpenFullscreen(game.ScreenshotPath)" />
                         }
                         @if (!string.IsNullOrEmpty(game.Comment))
                         {
                             <p class="card-text">@game.Comment</p>
+                        }
+                        @if (game.WinRound.HasValue)
+                        {
+                            <p class="card-text"><strong>⏱️ Sieg in Runde:</strong> <span class="badge bg-info">@game.WinRound</span></p>
                         }
                         <h6>Spieler:</h6>
                         <ol>
@@ -97,6 +101,11 @@ else
                     <div class="mb-3">
                         <label class="form-label">Kommentar</label>
                         <textarea class="form-control" @bind="editingGame!.Comment" rows="3"></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Sieg in Runde (optional)</label>
+                        <input type="number" class="form-control" @bind="editingGame!.WinRound" min="1" max="9999" placeholder="z.B. 250" />
+                        <small class="text-muted">In welcher Runde wurde das Spiel gewonnen?</small>
                     </div>
                     <div class="mb-3">
                         <label class="form-label">Screenshot</label>
@@ -221,6 +230,21 @@ else
     <div class="modal-backdrop show"></div>
 }
 
+@* Fullscreen Image Modal *@
+@if (showFullscreen && !string.IsNullOrEmpty(fullscreenImage))
+{
+    <div class="modal show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.9);" @onclick="CloseFullscreen">
+        <div class="modal-dialog modal-fullscreen">
+            <div class="modal-content bg-transparent border-0">
+                <div class="modal-body d-flex align-items-center justify-content-center p-0">
+                    <img src="@fullscreenImage" class="img-fluid" style="max-height: 100vh; max-width: 100vw; cursor: pointer;" alt="Fullscreen" @onclick="CloseFullscreen" />
+                </div>
+                <button type="button" class="btn-close btn-close-white position-absolute top-0 end-0 m-3" @onclick="CloseFullscreen"></button>
+            </div>
+        </div>
+    </div>
+}
+
 @code {
     private List<Game>? games;
     private List<Player>? allPlayers;
@@ -232,6 +256,8 @@ else
     private string? currentUserId;
     private bool isUploading = false;
     private string? uploadError = null;
+    private bool showFullscreen = false;
+    private string? fullscreenImage = null;
 
     protected override async Task OnInitializedAsync()
     {
@@ -269,6 +295,7 @@ else
             Comment = game.Comment,
             ScreenshotPath = game.ScreenshotPath,
             ScreenshotData = game.ScreenshotData,
+            WinRound = game.WinRound,
             CreatedById = game.CreatedById
         };
         gameDate = game.PlayedOn.ToLocalTime();
@@ -302,6 +329,7 @@ else
                     existingGame.Comment = editingGame.Comment;
                     existingGame.ScreenshotPath = editingGame.ScreenshotPath;
                     existingGame.ScreenshotData = editingGame.ScreenshotData;
+                    existingGame.WinRound = editingGame.WinRound;
                     existingGame.GamePlayers.Clear();
                     
                     for (int i = 0; i < selectedPlayers.Count; i++)
@@ -424,6 +452,21 @@ else
             editingGame.ScreenshotData = null;
             editingGame.ScreenshotPath = null;
         }
+    }
+
+    private void OpenFullscreen(string? imageUrl)
+    {
+        if (!string.IsNullOrEmpty(imageUrl))
+        {
+            fullscreenImage = imageUrl;
+            showFullscreen = true;
+        }
+    }
+
+    private void CloseFullscreen()
+    {
+        showFullscreen = false;
+        fullscreenImage = null;
     }
 
     private class PlayerSelection
