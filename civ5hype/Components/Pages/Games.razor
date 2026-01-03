@@ -52,6 +52,30 @@ else
                         {
                             <img src="@game.ScreenshotPath" class="img-fluid mb-2" alt="Screenshot" style="max-height: 200px; object-fit: cover; cursor: pointer;" @onclick="() => OpenFullscreen(game.ScreenshotPath)" />
                         }
+                        @* Gewinner mit großem Icon *@
+                        @{
+                            var winner = game.GamePlayers.FirstOrDefault(gp => gp.IsWinner);
+                        }
+                        @if (winner != null)
+                        {
+                            <div class="alert alert-success d-flex align-items-center mb-3" style="background: linear-gradient(135deg, #28a745 0%, #20c997 100%);">
+                                @if (!string.IsNullOrEmpty(winner.Civilization))
+                                {
+                                    <img src="/civs/@(winner.Civilization).png" 
+                                         alt="@winner.Civilization" 
+                                         style="width: 64px; height: 64px; object-fit: contain; margin-right: 15px; filter: drop-shadow(2px 2px 4px rgba(0,0,0,0.3));" 
+                                         onerror="this.style.display='none'" />
+                                }
+                                <div>
+                                    <h5 class="mb-0 text-white">🏆 @winner.Player?.Name</h5>
+                                    @if (!string.IsNullOrEmpty(winner.Civilization))
+                                    {
+                                        <small class="text-white-50">@winner.Civilization</small>
+                                    }
+                                </div>
+                            </div>
+                        }
+                        
                         @if (!string.IsNullOrEmpty(game.Comment))
                         {
                             <p class="card-text">@game.Comment</p>
@@ -189,23 +213,47 @@ else
                                     </div>
                                     <div class="col-4">
                                         <label class="form-label small">Nation</label>
-                                        <div class="input-group">
-                                            @if (!string.IsNullOrEmpty(selectedPlayers[index].Civilization))
-                                            {
-                                                <span class="input-group-text p-1">
+                                        <div class="dropdown w-100">
+                                            <button class="btn btn-outline-secondary dropdown-toggle w-100 text-start d-flex align-items-center" 
+                                                    type="button" 
+                                                    data-bs-toggle="dropdown" 
+                                                    aria-expanded="false"
+                                                    style="height: 38px;">
+                                                @if (!string.IsNullOrEmpty(selectedPlayers[index].Civilization))
+                                                {
                                                     <img src="/civs/@(selectedPlayers[index].Civilization).png" 
                                                          alt="@selectedPlayers[index].Civilization" 
-                                                         style="width: 24px; height: 24px; object-fit: contain;" 
+                                                         style="width: 24px; height: 24px; object-fit: contain; margin-right: 8px;" 
                                                          onerror="this.style.display='none'" />
-                                                </span>
-                                            }
-                                            <select class="form-select" @bind="selectedPlayers[index].Civilization">
-                                                <option value="">-- Nation wählen --</option>
+                                                    <span>@selectedPlayers[index].Civilization</span>
+                                                }
+                                                else
+                                                {
+                                                    <span class="text-muted">-- Nation wählen --</span>
+                                                }
+                                            </button>
+                                            <ul class="dropdown-menu w-100" style="max-height: 300px; overflow-y: auto;">
+                                                <li>
+                                                    <a class="dropdown-item" href="#" @onclick="() => { selectedPlayers[index].Civilization = string.Empty; }" @onclick:preventDefault>
+                                                        <span class="text-muted">-- Keine Nation --</span>
+                                                    </a>
+                                                </li>
                                                 @foreach (var civ in Civilizations.All)
                                                 {
-                                                    <option value="@civ">@civ</option>
+                                                    <li>
+                                                        <a class="dropdown-item d-flex align-items-center" 
+                                                           href="#" 
+                                                           @onclick="() => { selectedPlayers[index].Civilization = civ; }" 
+                                                           @onclick:preventDefault>
+                                                            <img src="/civs/@(civ).png" 
+                                                                 alt="@civ" 
+                                                                 style="width: 24px; height: 24px; object-fit: contain; margin-right: 8px;" 
+                                                                 onerror="this.style.display='none'" />
+                                                            <span>@civ</span>
+                                                        </a>
+                                                    </li>
                                                 }
-                                            </select>
+                                            </ul>
                                         </div>
                                     </div>
                                     <div class="col-2">
