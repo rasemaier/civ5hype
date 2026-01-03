@@ -68,6 +68,11 @@ else
                                     <strong>@gp.Player?.Name</strong>
                                     @if (!string.IsNullOrEmpty(gp.Civilization))
                                     {
+                                        <img src="/civs/@(gp.Civilization).png" 
+                                             alt="@gp.Civilization" 
+                                             title="@gp.Civilization"
+                                             style="width: 20px; height: 20px; object-fit: contain; margin: 0 4px; vertical-align: middle;" 
+                                             onerror="this.style.display='none'" />
                                         <span class="badge bg-secondary">@gp.Civilization</span>
                                     }
                                     @if (gp.SkillLevel.HasValue)
@@ -184,13 +189,24 @@ else
                                     </div>
                                     <div class="col-4">
                                         <label class="form-label small">Nation</label>
-                                        <select class="form-select" @bind="selectedPlayers[index].Civilization">
-                                            <option value="">-- Nation wählen --</option>
-                                            @foreach (var civ in Civilizations.All)
+                                        <div class="input-group">
+                                            @if (!string.IsNullOrEmpty(selectedPlayers[index].Civilization))
                                             {
-                                                <option value="@civ">@civ</option>
+                                                <span class="input-group-text p-1">
+                                                    <img src="/civs/@(selectedPlayers[index].Civilization).png" 
+                                                         alt="@selectedPlayers[index].Civilization" 
+                                                         style="width: 24px; height: 24px; object-fit: contain;" 
+                                                         onerror="this.style.display='none'" />
+                                                </span>
                                             }
-                                        </select>
+                                            <select class="form-select" @bind="selectedPlayers[index].Civilization">
+                                                <option value="">-- Nation wählen --</option>
+                                                @foreach (var civ in Civilizations.All)
+                                                {
+                                                    <option value="@civ">@civ</option>
+                                                }
+                                            </select>
+                                        </div>
                                     </div>
                                     <div class="col-2">
                                         <label class="form-label small">Skill</label>
