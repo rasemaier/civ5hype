@@ -9,6 +9,7 @@
 @using System.Text
 @using Microsoft.AspNetCore.Components.Forms
 @using Microsoft.Extensions.Caching.Memory
+@using System.IO.Compression
 @inject ApplicationDbContext DbContext
 @inject NavigationManager Navigation
 @inject AuthenticationStateProvider AuthenticationStateProvider
@@ -42,12 +43,19 @@
                                     <h5 class="mb-0">📤 Datenbank Export</h5>
                                 </div>
                                 <div class="card-body">
-                                    <p>Exportiere alle Daten als JSON-Datei:</p>
+                                    <p>Exportiere alle Daten:</p>
                                     <ul class="small">
-                                        <li>Spieler</li>
-                                        <li>Spiele</li>
-                                        <li>Spiel-Spieler Zuordnungen</li>
+                                        <li>📄 JSON-Datei (Spieler, Spiele, Zuordnungen)</li>
+                                        <li>📸 ZIP-Datei (Screenshots)</li>
                                     </ul>
+                                    <div class="mb-3">
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" id="includeScreenshots" @bind="includeScreenshots">
+                                            <label class="form-check-label" for="includeScreenshots">
+                                                Screenshots einschließen (ZIP)
+                                            </label>
+                                        </div>
+                                    </div>
                                     <form method="post" @onsubmit="ExportDatabase" @formname="export-form">
                                         <AntiforgeryToken />
                                         <button type="submit" class="btn btn-success" disabled="@isExporting">
@@ -73,11 +81,21 @@
                                     <h5 class="mb-0">📥 Datenbank Import</h5>
                                 </div>
                                 <div class="card-body">
-                                    <p>Importiere Daten aus JSON-Datei:</p>
+                                    <p>Importiere Daten:</p>
                                     <div class="alert alert-warning small">
                                         <strong>⚠️ Achtung:</strong> Bestehende Daten werden überschrieben!
                                     </div>
-                                    <InputFile OnChange="HandleFileSelected" accept=".json" class="form-control mb-2" />
+                                    
+                                    <div class="mb-3">
+                                        <label class="form-label fw-bold">1️⃣ JSON-Datei (erforderlich)</label>
+                                        <InputFile OnChange="HandleJsonFileSelected" accept=".json" class="form-control" />
+                                    </div>
+                                    
+                                    <div class="mb-3">
+                                        <label class="form-label fw-bold">2️⃣ Screenshots ZIP (optional)</label>
+                                        <InputFile OnChange="HandleZipFileSelected" accept=".zip" class="form-control" />
+                                    </div>
+                                    
                                     <button class="btn btn-warning" @onclick="ImportDatabase" disabled="@IsImportDisabled">
                                         @if (isImporting)
                                         {
@@ -142,12 +160,14 @@
     private bool isImporting = false;
     private string? message;
     private bool isError = false;
-    private IBrowserFile? selectedFile;
+    private IBrowserFile? selectedJsonFile;
+    private IBrowserFile? selectedZipFile;
     private DatabaseStats? stats;
     private bool canAccess = false;
     private string? currentUserId;
+    private bool includeScreenshots = true;
     
-    private bool IsImportDisabled => selectedFile == null || isImporting;
+    private bool IsImportDisabled => selectedJsonFile == null || isImporting;
 
     protected override async Task OnInitializedAsync()
     {
@@ -186,7 +206,9 @@
 
         try
         {
-            // Create a simpler export object to reduce memory usage
+            var timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
+            
+            // Export JSON
             var export = new
             {
                 ExportDate = DateTime.UtcNow,
@@ -205,24 +227,71 @@
                     .ToListAsync()
             };
 
-            // Serialize with streaming to reduce memory
-            using var stream = new MemoryStream();
-            await JsonSerializer.SerializeAsync(stream, export, new JsonSerializerOptions
-            {
-                WriteIndented = false // Don't indent to save space
-            });
-
-            var bytes = stream.ToArray();
-            var fileName = $"civ5hype_backup_{DateTime.Now:yyyyMMdd_HHmmss}.json";
+            using var jsonStream = new MemoryStream();
+            await JsonSerializer.SerializeAsync(jsonStream, export, new JsonSerializerOptions { WriteIndented = false });
+            var jsonBytes = jsonStream.ToArray();
+            var jsonFileName = $"civ5hype_backup_{timestamp}.json";
             
-            // Store in memory cache with unique ID
-            var downloadId = Guid.NewGuid().ToString();
-            MemoryCache.Set($"backup_{downloadId}", bytes, TimeSpan.FromMinutes(5));
+            var jsonDownloadId = Guid.NewGuid().ToString();
+            MemoryCache.Set($"backup_{jsonDownloadId}", jsonBytes, TimeSpan.FromMinutes(5));
 
-            // Redirect to download endpoint
-            Navigation.NavigateTo($"/admin/download-backup?id={downloadId}&filename={Uri.EscapeDataString(fileName)}", forceLoad: true);
+            // Export Screenshots ZIP if requested
+            if (includeScreenshots)
+            {
+                var gamesWithScreenshots = await DbContext.Games
+                    .Where(g => g.ScreenshotData != null)
+                    .Select(g => new { g.Id, g.ScreenshotData })
+                    .ToListAsync();
 
-            message = $"✅ Export erfolgreich! Download startet...";
+                if (gamesWithScreenshots.Any())
+                {
+                    using var zipStream = new MemoryStream();
+                    using (var archive = new ZipArchive(zipStream, ZipArchiveMode.Create, true))
+                    {
+                        foreach (var game in gamesWithScreenshots)
+                        {
+                            if (!string.IsNullOrEmpty(game.ScreenshotData))
+                            {
+                                // Extract base64 data (remove "data:image/...;base64," prefix)
+                                var base64Data = game.ScreenshotData.Contains(",") 
+                                    ? game.ScreenshotData.Split(',')[1] 
+                                    : game.ScreenshotData;
+                                
+                                var imageBytes = Convert.FromBase64String(base64Data);
+                                
+                                // Determine file extension from data URL
+                                var extension = ".jpg";
+                                if (game.ScreenshotData.Contains("image/png")) extension = ".png";
+                                else if (game.ScreenshotData.Contains("image/gif")) extension = ".gif";
+                                else if (game.ScreenshotData.Contains("image/webp")) extension = ".webp";
+                                
+                                var entry = archive.CreateEntry($"game_{game.Id}{extension}");
+                                using var entryStream = entry.Open();
+                                await entryStream.WriteAsync(imageBytes, 0, imageBytes.Length);
+                            }
+                        }
+                    }
+
+                    var zipBytes = zipStream.ToArray();
+                    var zipFileName = $"civ5hype_screenshots_{timestamp}.zip";
+                    
+                    var zipDownloadId = Guid.NewGuid().ToString();
+                    MemoryCache.Set($"backup_{zipDownloadId}", zipBytes, TimeSpan.FromMinutes(5));
+
+                    // Download ZIP first
+                    Navigation.NavigateTo($"/admin/download-backup?id={zipDownloadId}&filename={Uri.EscapeDataString(zipFileName)}", forceLoad: true);
+                    
+                    // Wait a bit, then download JSON
+                    await Task.Delay(1000);
+                }
+            }
+
+            // Download JSON
+            Navigation.NavigateTo($"/admin/download-backup?id={jsonDownloadId}&filename={Uri.EscapeDataString(jsonFileName)}", forceLoad: true);
+
+            message = includeScreenshots 
+                ? $"✅ Export erfolgreich! JSON und ZIP werden heruntergeladen..."
+                : $"✅ Export erfolgreich! JSON wird heruntergeladen...";
             isError = false;
         }
         catch (Exception ex)
@@ -236,28 +305,44 @@
         }
     }
 
-    private void HandleFileSelected(InputFileChangeEventArgs e)
+    private void HandleJsonFileSelected(InputFileChangeEventArgs e)
     {
-        selectedFile = e.File;
-        message = $"Datei ausgewählt: {selectedFile.Name}";
+        selectedJsonFile = e.File;
+        message = $"JSON-Datei ausgewählt: {selectedJsonFile.Name}";
+        isError = false;
+    }
+
+    private void HandleZipFileSelected(InputFileChangeEventArgs e)
+    {
+        selectedZipFile = e.File;
+        message = $"ZIP-Datei ausgewählt: {selectedZipFile.Name}";
         isError = false;
     }
 
     private async Task ImportDatabase()
     {
-        if (selectedFile == null) return;
+        if (selectedJsonFile == null) return;
 
         isImporting = true;
         message = null;
 
         try
         {
-            using var stream = selectedFile.OpenReadStream(maxAllowedSize: 50 * 1024 * 1024); // 50 MB
-            var export = await JsonSerializer.DeserializeAsync<DatabaseExport>(stream);
+            using var jsonStream = selectedJsonFile.OpenReadStream(maxAllowedSize: 50 * 1024 * 1024); // 50 MB
+            var export = await JsonSerializer.DeserializeAsync<DatabaseExport>(jsonStream);
 
             if (export == null)
             {
                 throw new Exception("Ungültiges Backup-Format");
+            }
+
+            // Get current user ID (admin who is doing the import)
+            var currentUserId = (await AuthenticationStateProvider.GetAuthenticationStateAsync())
+                .User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+
+            if (string.IsNullOrEmpty(currentUserId))
+            {
+                throw new Exception("Benutzer nicht authentifiziert");
             }
 
             // Clear existing data
@@ -266,35 +351,115 @@
             DbContext.Players.RemoveRange(DbContext.Players);
             await DbContext.SaveChangesAsync();
 
-            // Import new data
-            if (export.Players != null)
+            // Import Players first
+            if (export.Players != null && export.Players.Any())
             {
                 await DbContext.Players.AddRangeAsync(export.Players);
+                await DbContext.SaveChangesAsync();
             }
-            if (export.Games != null)
+
+            // Import Games - fix CreatedById to current user if the original user doesn't exist
+            if (export.Games != null && export.Games.Any())
             {
+                foreach (var game in export.Games)
+                {
+                    // Check if the CreatedById user exists
+                    var userExists = await DbContext.Users.AnyAsync(u => u.Id == game.CreatedById);
+                    if (!userExists)
+                    {
+                        // Set to current user if original creator doesn't exist
+                        game.CreatedById = currentUserId;
+                    }
+                }
                 await DbContext.Games.AddRangeAsync(export.Games);
+                await DbContext.SaveChangesAsync();
             }
-            if (export.GamePlayers != null)
+
+            // Import GamePlayers last
+            if (export.GamePlayers != null && export.GamePlayers.Any())
             {
                 await DbContext.GamePlayers.AddRangeAsync(export.GamePlayers);
+                await DbContext.SaveChangesAsync();
             }
 
-            await DbContext.SaveChangesAsync();
+            var importedCount = export.Players?.Count ?? 0;
+            var gamesCount = export.Games?.Count ?? 0;
+
+            // Import Screenshots from ZIP if provided
+            int screenshotsImported = 0;
+            if (selectedZipFile != null)
+            {
+                // First, read the entire ZIP into memory
+                using var zipFileStream = selectedZipFile.OpenReadStream(maxAllowedSize: 100 * 1024 * 1024); // 100 MB for ZIP
+                using var zipMemoryStream = new MemoryStream();
+                await zipFileStream.CopyToAsync(zipMemoryStream);
+                zipMemoryStream.Position = 0;
+
+                using var archive = new ZipArchive(zipMemoryStream, ZipArchiveMode.Read);
+
+                foreach (var entry in archive.Entries)
+                {
+                    // Extract game ID from filename (e.g., "game_123.jpg" -> 123)
+                    var fileName = Path.GetFileNameWithoutExtension(entry.Name);
+                    if (fileName.StartsWith("game_") && int.TryParse(fileName.Substring(5), out int gameId))
+                    {
+                        var game = await DbContext.Games.FindAsync(gameId);
+                        if (game != null)
+                        {
+                            using var entryStream = entry.Open();
+                            using var ms = new MemoryStream();
+                            await entryStream.CopyToAsync(ms);
+                            var imageBytes = ms.ToArray();
+
+                            // Determine MIME type from file extension
+                            var extension = Path.GetExtension(entry.Name).ToLowerInvariant();
+                            var mimeType = extension switch
+                            {
+                                ".png" => "image/png",
+                                ".gif" => "image/gif",
+                                ".webp" => "image/webp",
+                                _ => "image/jpeg"
+                            };
+
+                            // Convert to base64 data URL
+                            var base64 = Convert.ToBase64String(imageBytes);
+                            game.ScreenshotData = $"data:{mimeType};base64,{base64}";
+                            screenshotsImported++;
+                        }
+                    }
+                }
+
+                await DbContext.SaveChangesAsync();
+            }
+
             await LoadStats();
 
-            message = $"✅ Import erfolgreich! {export.Players?.Count ?? 0} Spieler, {export.Games?.Count ?? 0} Spiele importiert.";
+            message = selectedZipFile != null
+                ? $"✅ Import erfolgreich! {importedCount} Spieler, {gamesCount} Spiele, {screenshotsImported} Screenshots importiert."
+                : $"✅ Import erfolgreich! {importedCount} Spieler, {gamesCount} Spiele importiert.";
             isError = false;
         }
         catch (Exception ex)
         {
-            message = $"❌ Fehler beim Import: {ex.Message}";
+            var innerMessage = ex.InnerException?.Message ?? ex.Message;
+            var fullMessage = ex.InnerException != null 
+                ? $"{ex.Message} | Inner: {innerMessage}" 
+                : ex.Message;
+            message = $"❌ Fehler beim Import: {fullMessage}";
             isError = true;
+            
+            // Log to console for debugging
+            Console.WriteLine($"Import error: {ex}");
+            if (ex.InnerException != null)
+            {
+                Console.WriteLine($"Inner exception: {ex.InnerException}");
+            }
         }
         finally
         {
             isImporting = false;
-            selectedFile = null;
+            selectedJsonFile = null;
+            selectedZipFile = null;
         }
     }
 

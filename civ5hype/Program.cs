@@ -37,7 +37,7 @@ builder.Services.AddAuthentication(options =>
 
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection") ?? "Data Source=civ5hype.db";
 
-// Use PostgreSQL if DATABASE_URL is set (Railway), otherwise SQLite (local development)
+// Use PostgreSQL if DATABASE_URL is set (Railway) or if connection string contains PostgreSQL keywords
 var databaseUrl = Environment.GetEnvironmentVariable("DATABASE_URL");
 if (!string.IsNullOrEmpty(databaseUrl) && databaseUrl.StartsWith("postgres"))
 {
@@ -56,14 +56,21 @@ if (!string.IsNullOrEmpty(databaseUrl) && databaseUrl.StartsWith("postgres"))
     catch (Exception ex)
     {
         Console.WriteLine($"❌ Failed to parse DATABASE_URL: {ex.Message}");
-        Console.WriteLine("Falling back to SQLite");
+        Console.WriteLine("Falling back to connection string from appsettings");
         builder.Services.AddDbContext<ApplicationDbContext>(options =>
-            options.UseSqlite(connectionString));
+            options.UseNpgsql(connectionString));
     }
+}
+else if (connectionString.Contains("Host=") || connectionString.Contains("host="))
+{
+    // Local PostgreSQL (from appsettings.Development.json)
+    Console.WriteLine("✅ Using PostgreSQL database (local)");
+    builder.Services.AddDbContext<ApplicationDbContext>(options =>
+        options.UseNpgsql(connectionString));
 }
 else
 {
-    // Local SQLite
+    // Local SQLite (fallback)
     Console.WriteLine("✅ Using SQLite database");
     builder.Services.AddDbContext<ApplicationDbContext>(options =>
         options.UseSqlite(connectionString));
@@ -98,6 +105,7 @@ builder.Services.AddScoped<civ5hype.Services.GameService>();
 builder.Services.AddScoped<civ5hype.Services.PlayerService>();
 builder.Services.AddScoped<civ5hype.Services.UserService>();
 builder.Services.AddScoped<civ5hype.Services.FileUploadService>();
+builder.Services.AddScoped<civ5hype.Services.DatabaseBackupService>();
 
 var app = builder.Build();
 
