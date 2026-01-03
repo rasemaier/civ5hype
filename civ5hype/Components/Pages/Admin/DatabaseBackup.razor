@@ -5,8 +5,9 @@
 @using Microsoft.EntityFrameworkCore
 @using System.Text.Json
 @using System.Text
+@using Microsoft.AspNetCore.Components.Forms
 @inject ApplicationDbContext DbContext
-@inject IJSRuntime JS
+@inject NavigationManager Navigation
 @attribute [Authorize(Roles = "Admin")]
 @rendermode InteractiveServer
 
@@ -42,17 +43,20 @@
                                         <li>Spiele</li>
                                         <li>Spiel-Spieler Zuordnungen</li>
                                     </ul>
-                                    <button class="btn btn-success" @onclick="ExportDatabase" disabled="@isExporting">
-                                        @if (isExporting)
-                                        {
-                                            <span class="spinner-border spinner-border-sm me-2"></span>
-                                            <span>Exportiere...</span>
-                                        }
-                                        else
-                                        {
-                                            <span>💾 Export starten</span>
-                                        }
-                                    </button>
+                                    <form method="post" @onsubmit="ExportDatabase" @formname="export-form">
+                                        <AntiforgeryToken />
+                                        <button type="submit" class="btn btn-success" disabled="@isExporting">
+                                            @if (isExporting)
+                                            {
+                                                <span class="spinner-border spinner-border-sm me-2"></span>
+                                                <span>Exportiere...</span>
+                                            }
+                                            else
+                                            {
+                                                <span>💾 Export starten</span>
+                                            }
+                                        </button>
+                                    </form>
                                 </div>
                             </div>
                         </div>
@@ -173,10 +177,12 @@
 
             var bytes = Encoding.UTF8.GetBytes(json);
             var fileName = $"civ5hype_backup_{DateTime.Now:yyyyMMdd_HHmmss}.json";
+            var base64 = Convert.ToBase64String(bytes);
 
-            await JS.InvokeVoidAsync("downloadFile", fileName, Convert.ToBase64String(bytes));
+            // Redirect to download endpoint
+            Navigation.NavigateTo($"/admin/download-backup?data={Uri.EscapeDataString(base64)}&filename={Uri.EscapeDataString(fileName)}", forceLoad: true);
 
-            message = $"✅ Export erfolgreich! Datei: {fileName}";
+            message = $"✅ Export erfolgreich! Download startet...";
             isError = false;
         }
         catch (Exception ex)

@@ -19,6 +19,7 @@ builder.Services.Configure<ForwardedHeadersOptions>(options =>
 });
 
 // Add services to the container.
+builder.Services.AddControllers(); // Add MVC controllers
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 
@@ -208,6 +209,8 @@ if (!app.Environment.IsProduction())
 app.UseAntiforgery();
 
 app.MapStaticAssets();
+app.MapControllers(); // Map controller routes
+
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
 
