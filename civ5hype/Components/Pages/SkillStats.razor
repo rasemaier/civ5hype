@@ -2,6 +2,7 @@
 @using civ5hype.Data.Models
 @using civ5hype.Data.Enums
 @using civ5hype.Services
+@using Microsoft.AspNetCore.Components
 @inject GameService GameService
 @inject PlayerService PlayerService
 @rendermode InteractiveServer
@@ -303,12 +304,12 @@
             .ToList()!;
     }
 
-    private string GetSkillBadge(double skillValue)
+    private MarkupString GetSkillBadge(double skillValue)
     {
-        if (skillValue == 0) return "<span class='badge bg-secondary'>-</span>";
+        if (skillValue == 0) return new MarkupString("<span class='badge bg-secondary'>-</span>");
 
         var skill = (SkillLevel)Math.Round(skillValue);
-        return skill switch
+        var html = skill switch
         {
             SkillLevel.Neuling => "<span class='badge bg-success'>🟢 Neuling</span>",
             SkillLevel.Okay => "<span class='badge bg-primary'>🔵 Okay</span>",
@@ -316,6 +317,7 @@
             SkillLevel.SehrGut => "<span class='badge bg-danger'>🔴 Sehr Gut</span>",
             _ => "<span class='badge bg-secondary'>-</span>"
         };
+        return new MarkupString(html);
     }
 
     private class WeightedPlayerStat

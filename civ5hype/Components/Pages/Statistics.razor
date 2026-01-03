@@ -29,6 +29,8 @@ else
                         <th>Siege</th>
                         <th>Siegquote</th>
                         <th>Ø Platzierung</th>
+                        <th>⚖️ Gewichtete Punkte</th>
+                        <th>Ø Gegner-Stärke</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -71,6 +73,7 @@ else
                                     <span class="text-muted">-</span>
                                 }
                             </td>
+                            <td>@GetSkillBadge(stat.AverageOpponentSkill)</td>
                         </tr>
                         rank++;
                     }
@@ -230,6 +233,17 @@ else
                     }
                 }
 
+                // Calculate average opponent skill
+                var allOpponents = recentGames
+                    .Where(g => g.GamePlayers.Any(gp => gp.PlayerId == player.Id))
+                    .SelectMany(g => g.GamePlayers)
+                    .Where(gp => gp.PlayerId != player.Id && gp.SkillLevel.HasValue)
+                    .ToList();
+
+                var avgAllOpponentSkill = allOpponents.Any() 
+                    ? allOpponents.Average(gp => (int)gp.SkillLevel!.Value) 
+                    : 0.0;
+
                 var stat = new PlayerStatistics
                 {
                     PlayerId = player.Id,
@@ -238,6 +252,7 @@ else
                     Wins = wins.ContainsKey(player.Id) ? wins[player.Id] : 0,
                     AverageRank = playerGames.Average(gp => gp.Rank),
                     WeightedPoints = weightedPoints,
+                    AverageOpponentSkill = avgAllOpponentSkill,
                     RankDistribution = rankDistribution.ContainsKey(player.Id) 
                         ? rankDistribution[player.Id] 
                         : new Dictionary<int, int>()
@@ -263,6 +278,22 @@ else
             .ToList();
     }
 
+    private MarkupString GetSkillBadge(double skillValue)
+    {
+        if (skillValue == 0) return new MarkupString("<span class='badge bg-secondary'>-</span>");
+
+        var skill = (SkillLevel)Math.Round(skillValue);
+        var html = skill switch
+        {
+            SkillLevel.Neuling => "<span class='badge bg-success'>🟢 Neuling</span>",
+            SkillLevel.Okay => "<span class='badge bg-primary'>🔵 Okay</span>",
+            SkillLevel.Gut => "<span class='badge bg-warning'>🟡 Gut</span>",
+            SkillLevel.SehrGut => "<span class='badge bg-danger'>🔴 Sehr Gut</span>",
+            _ => "<span class='badge bg-secondary'>-</span>"
+        };
+        return new MarkupString(html);
+    }
+
     private class PlayerStatistics
     {
         public int PlayerId { get; set; }
@@ -272,6 +303,7 @@ else
         public double WinRate => TotalGames > 0 ? (double)Wins / TotalGames : 0;
         public double AverageRank { get; set; }
         public double WeightedPoints { get; set; }
+        public double AverageOpponentSkill { get; set; }
         public Dictionary<int, int> RankDistribution { get; set; } = new();
     }
 
