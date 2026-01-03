@@ -146,6 +146,8 @@
     private DatabaseStats? stats;
     private bool canAccess = false;
     private string? currentUserId;
+    
+    private bool IsImportDisabled => selectedFile == null || isImporting;
 
     protected override async Task OnInitializedAsync()
     {
