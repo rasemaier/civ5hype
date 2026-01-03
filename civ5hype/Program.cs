@@ -88,6 +88,21 @@ builder.Services.ConfigureApplicationCookie(options =>
 {
     options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
     options.Cookie.SameSite = SameSiteMode.Lax;
+    
+    // Configure paths to use the correct scheme
+    options.Events.OnRedirectToLogin = context =>
+    {
+        context.Response.Headers["Location"] = context.RedirectUri.Replace("http://", "https://");
+        context.Response.StatusCode = 302;
+        return Task.CompletedTask;
+    };
+    
+    options.Events.OnRedirectToAccessDenied = context =>
+    {
+        context.Response.Headers["Location"] = context.RedirectUri.Replace("http://", "https://");
+        context.Response.StatusCode = 302;
+        return Task.CompletedTask;
+    };
 });
 
 builder.Services.AddSingleton<IEmailSender<ApplicationUser>, IdentityNoOpEmailSender>();
@@ -179,10 +194,20 @@ app.UseForwardedHeaders();
 // Middleware to ensure HTTPS scheme is used for redirects
 app.Use(async (context, next) =>
 {
-    if (context.Request.Headers.ContainsKey("X-Forwarded-Proto"))
+    // Force HTTPS scheme for all requests when X-Forwarded-Proto is https
+    var forwardedProto = context.Request.Headers["X-Forwarded-Proto"].FirstOrDefault();
+    if (forwardedProto == "https")
     {
-        context.Request.Scheme = context.Request.Headers["X-Forwarded-Proto"].ToString();
+        context.Request.Scheme = "https";
     }
+    
+    // Also check X-Forwarded-Host
+    var forwardedHost = context.Request.Headers["X-Forwarded-Host"].FirstOrDefault();
+    if (!string.IsNullOrEmpty(forwardedHost))
+    {
+        context.Request.Host = new HostString(forwardedHost);
+    }
+    
     await next();
 });
 
