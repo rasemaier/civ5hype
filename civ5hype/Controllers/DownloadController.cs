@@ -1,6 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using System.Text;
+using Microsoft.Extensions.Caching.Memory;
 
 namespace civ5hype.Controllers
 {
@@ -8,17 +8,31 @@ namespace civ5hype.Controllers
     [Route("admin")]
     public class DownloadController : Controller
     {
+        private readonly IMemoryCache _memoryCache;
+
+        public DownloadController(IMemoryCache memoryCache)
+        {
+            _memoryCache = memoryCache;
+        }
+
         [HttpGet("download-backup")]
-        public IActionResult DownloadBackup([FromQuery] string data, [FromQuery] string filename)
+        public IActionResult DownloadBackup([FromQuery] string id, [FromQuery] string filename)
         {
             try
             {
-                var bytes = Convert.FromBase64String(data);
-                return File(bytes, "application/json", filename);
+                var cacheKey = $"backup_{id}";
+                if (_memoryCache.TryGetValue(cacheKey, out byte[]? bytes) && bytes != null)
+                {
+                    // Remove from cache after retrieval
+                    _memoryCache.Remove(cacheKey);
+                    return File(bytes, "application/json", filename);
+                }
+                
+                return BadRequest("Backup not found or expired. Please try exporting again.");
             }
-            catch
+            catch (Exception ex)
             {
-                return BadRequest("Invalid data");
+                return BadRequest($"Error: {ex.Message}");
             }
         }
     }

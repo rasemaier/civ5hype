@@ -19,6 +19,7 @@ builder.Services.Configure<ForwardedHeadersOptions>(options =>
 });
 
 // Add services to the container.
+builder.Services.AddMemoryCache(); // Add memory cache for temporary data
 builder.Services.AddControllers(); // Add MVC controllers
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();

@@ -11,6 +11,7 @@
 @inject ApplicationDbContext DbContext
 @inject NavigationManager Navigation
 @inject AuthenticationStateProvider AuthenticationStateProvider
+@inject Microsoft.Extensions.Caching.Memory.IMemoryCache MemoryCache
 @attribute [Authorize]
 @rendermode InteractiveServer
 
@@ -197,10 +198,13 @@
 
             var bytes = Encoding.UTF8.GetBytes(json);
             var fileName = $"civ5hype_backup_{DateTime.Now:yyyyMMdd_HHmmss}.json";
-            var base64 = Convert.ToBase64String(bytes);
+            
+            // Store in memory cache with unique ID
+            var downloadId = Guid.NewGuid().ToString();
+            MemoryCache.Set($"backup_{downloadId}", bytes, TimeSpan.FromMinutes(5));
 
             // Redirect to download endpoint
-            Navigation.NavigateTo($"/admin/download-backup?data={Uri.EscapeDataString(base64)}&filename={Uri.EscapeDataString(fileName)}", forceLoad: true);
+            Navigation.NavigateTo($"/admin/download-backup?id={downloadId}&filename={Uri.EscapeDataString(fileName)}", forceLoad: true);
 
             message = $"✅ Export erfolgreich! Download startet...";
             isError = false;
