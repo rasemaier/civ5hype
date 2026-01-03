@@ -1,14 +1,17 @@
 @page "/admin/database-backup"
 @using civ5hype.Data
 @using civ5hype.Data.Models
+@using civ5hype.Data.Enums
 @using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.Authorization
 @using Microsoft.EntityFrameworkCore
 @using System.Text.Json
 @using System.Text
 @using Microsoft.AspNetCore.Components.Forms
 @inject ApplicationDbContext DbContext
 @inject NavigationManager Navigation
-@attribute [Authorize(Roles = "Admin")]
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@attribute [Authorize]
 @rendermode InteractiveServer
 
 <PageTitle>Datenbank Backup</PageTitle>
@@ -139,10 +142,27 @@
     private bool isError = false;
     private IBrowserFile? selectedFile;
     private DatabaseStats? stats;
+    private bool canAccess = false;
+    private string? currentUserId;
 
     protected override async Task OnInitializedAsync()
     {
-        await LoadStats();
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+
+        if (user.Identity?.IsAuthenticated == true)
+        {
+            currentUserId = user.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+            
+            // Check if user is Admin
+            var appUser = await DbContext.Users.FindAsync(currentUserId);
+            canAccess = appUser?.Role == UserRole.Admin;
+        }
+
+        if (canAccess)
+        {
+            await LoadStats();
+        }
     }
 
     private async Task LoadStats()

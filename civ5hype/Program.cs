@@ -88,21 +88,6 @@ builder.Services.ConfigureApplicationCookie(options =>
 {
     options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
     options.Cookie.SameSite = SameSiteMode.Lax;
-    
-    // Configure paths to use the correct scheme
-    options.Events.OnRedirectToLogin = context =>
-    {
-        context.Response.Headers["Location"] = context.RedirectUri.Replace("http://", "https://");
-        context.Response.StatusCode = 302;
-        return Task.CompletedTask;
-    };
-    
-    options.Events.OnRedirectToAccessDenied = context =>
-    {
-        context.Response.Headers["Location"] = context.RedirectUri.Replace("http://", "https://");
-        context.Response.StatusCode = 302;
-        return Task.CompletedTask;
-    };
 });
 
 builder.Services.AddSingleton<IEmailSender<ApplicationUser>, IdentityNoOpEmailSender>();
