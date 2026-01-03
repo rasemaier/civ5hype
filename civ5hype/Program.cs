@@ -175,6 +175,16 @@ app.Urls.Add($"http://0.0.0.0:{port}");
 // Use forwarded headers (must be before other middleware)
 app.UseForwardedHeaders();
 
+// Middleware to ensure HTTPS scheme is used for redirects
+app.Use(async (context, next) =>
+{
+    if (context.Request.Headers.ContainsKey("X-Forwarded-Proto"))
+    {
+        context.Request.Scheme = context.Request.Headers["X-Forwarded-Proto"].ToString();
+    }
+    await next();
+});
+
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
