@@ -213,47 +213,22 @@ else
                                     </div>
                                     <div class="col-4">
                                         <label class="form-label small">Nation</label>
-                                        <div class="dropdown w-100">
-                                            <button class="btn btn-outline-secondary dropdown-toggle w-100 text-start d-flex align-items-center" 
-                                                    type="button" 
-                                                    data-bs-toggle="dropdown" 
-                                                    aria-expanded="false"
-                                                    style="height: 38px;">
-                                                @if (!string.IsNullOrEmpty(selectedPlayers[index].Civilization))
-                                                {
-                                                    <img src="/civs/@(selectedPlayers[index].Civilization).png" 
-                                                         alt="@selectedPlayers[index].Civilization" 
-                                                         style="width: 24px; height: 24px; object-fit: contain; margin-right: 8px;" 
-                                                         onerror="this.style.display='none'" />
-                                                    <span>@selectedPlayers[index].Civilization</span>
-                                                }
-                                                else
-                                                {
-                                                    <span class="text-muted">-- Nation wählen --</span>
-                                                }
-                                            </button>
-                                            <ul class="dropdown-menu w-100" style="max-height: 300px; overflow-y: auto;">
-                                                <li>
-                                                    <a class="dropdown-item" href="#" @onclick="() => { selectedPlayers[index].Civilization = string.Empty; }" @onclick:preventDefault>
-                                                        <span class="text-muted">-- Keine Nation --</span>
-                                                    </a>
-                                                </li>
+                                        <div class="d-flex align-items-center">
+                                            @if (!string.IsNullOrEmpty(selectedPlayers[index].Civilization))
+                                            {
+                                                <img src="/civs/@(selectedPlayers[index].Civilization).png" 
+                                                     alt="@selectedPlayers[index].Civilization" 
+                                                     title="@selectedPlayers[index].Civilization"
+                                                     style="width: 32px; height: 32px; object-fit: contain; margin-right: 8px; filter: drop-shadow(1px 1px 2px rgba(0,0,0,0.2));" 
+                                                     onerror="this.style.display='none'" />
+                                            }
+                                            <select class="form-select" @bind="selectedPlayers[index].Civilization">
+                                                <option value="">-- Nation wählen --</option>
                                                 @foreach (var civ in Civilizations.All)
                                                 {
-                                                    <li>
-                                                        <a class="dropdown-item d-flex align-items-center" 
-                                                           href="#" 
-                                                           @onclick="() => { selectedPlayers[index].Civilization = civ; }" 
-                                                           @onclick:preventDefault>
-                                                            <img src="/civs/@(civ).png" 
-                                                                 alt="@civ" 
-                                                                 style="width: 24px; height: 24px; object-fit: contain; margin-right: 8px;" 
-                                                                 onerror="this.style.display='none'" />
-                                                            <span>@civ</span>
-                                                        </a>
-                                                    </li>
+                                                    <option value="@civ">@civ</option>
                                                 }
-                                            </ul>
+                                            </select>
                                         </div>
                                     </div>
                                     <div class="col-2">
