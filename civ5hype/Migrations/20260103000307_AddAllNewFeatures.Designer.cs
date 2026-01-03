@@ -12,8 +12,8 @@ using civ5hype.Data;
 namespace civ5hype.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20260102222328_AddSkillLevel")]
-    partial class AddSkillLevel
+    [Migration("20260103000307_AddAllNewFeatures")]
+    partial class AddAllNewFeatures
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)

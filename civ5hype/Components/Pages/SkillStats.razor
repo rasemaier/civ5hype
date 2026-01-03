@@ -229,7 +229,7 @@
                 .Where(gp => gp.PlayerId != p.Id && gp.SkillLevel.HasValue)
                 .ToList();
 
-            var avgOpponentSkill = allOpponents.Any() 
+            var avgAllOpponentSkill = allOpponents.Any() 
                 ? allOpponents.Average(gp => (int)gp.SkillLevel!.Value) 
                 : 0.0;
 
@@ -239,7 +239,7 @@
                 TotalGames = playerGames.Count,
                 Wins = wins,
                 WeightedPoints = weightedPoints,
-                AverageOpponentSkill = avgOpponentSkill
+                AverageOpponentSkill = avgAllOpponentSkill
             };
         })
         .Where(s => s != null)

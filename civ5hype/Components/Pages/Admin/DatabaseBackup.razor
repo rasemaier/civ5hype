@@ -1,0 +1,270 @@
+@page "/admin/database-backup"
+@using civ5hype.Data
+@using civ5hype.Data.Models
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.EntityFrameworkCore
+@using System.Text.Json
+@using System.Text
+@inject ApplicationDbContext DbContext
+@inject IJSRuntime JS
+@attribute [Authorize(Roles = "Admin")]
+@rendermode InteractiveServer
+
+<PageTitle>Datenbank Backup</PageTitle>
+
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow-lg">
+                <div class="card-header bg-danger text-white">
+                    <h3 class="mb-0">💾 Datenbank Backup & Restore</h3>
+                    <p class="mb-0 small">Export und Import der gesamten Datenbank</p>
+                </div>
+                <div class="card-body">
+                    @if (!string.IsNullOrEmpty(message))
+                    {
+                        <div class="alert alert-@(isError ? "danger" : "success") alert-dismissible fade show">
+                            @message
+                        </div>
+                    }
+
+                    <div class="row">
+                        <!-- Export -->
+                        <div class="col-md-6 mb-4">
+                            <div class="card bg-light">
+                                <div class="card-header bg-success text-white">
+                                    <h5 class="mb-0">📤 Datenbank Export</h5>
+                                </div>
+                                <div class="card-body">
+                                    <p>Exportiere alle Daten als JSON-Datei:</p>
+                                    <ul class="small">
+                                        <li>Spieler</li>
+                                        <li>Spiele</li>
+                                        <li>Spiel-Spieler Zuordnungen</li>
+                                    </ul>
+                                    <button class="btn btn-success" @onclick="ExportDatabase" disabled="@isExporting">
+                                        @if (isExporting)
+                                        {
+                                            <span class="spinner-border spinner-border-sm me-2"></span>
+                                            <span>Exportiere...</span>
+                                        }
+                                        else
+                                        {
+                                            <span>💾 Export starten</span>
+                                        }
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Import -->
+                        <div class="col-md-6 mb-4">
+                            <div class="card bg-light">
+                                <div class="card-header bg-warning text-dark">
+                                    <h5 class="mb-0">📥 Datenbank Import</h5>
+                                </div>
+                                <div class="card-body">
+                                    <p>Importiere Daten aus JSON-Datei:</p>
+                                    <div class="alert alert-warning small">
+                                        <strong>⚠️ Achtung:</strong> Bestehende Daten werden überschrieben!
+                                    </div>
+                                    <InputFile OnChange="HandleFileSelected" accept=".json" class="form-control mb-2" />
+                                    <button class="btn btn-warning" @onclick="ImportDatabase" disabled="@(selectedFile == null || isImporting)">
+                                        @if (isImporting)
+                                        {
+                                            <span class="spinner-border spinner-border-sm me-2"></span>
+                                            <span>Importiere...</span>
+                                        }
+                                        else
+                                        {
+                                            <span>📥 Import starten</span>
+                                        }
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Statistiken -->
+                    <div class="card bg-light mt-4">
+                        <div class="card-header bg-info text-white">
+                            <h5 class="mb-0">📊 Datenbank Statistiken</h5>
+                        </div>
+                        <div class="card-body">
+                            @if (stats != null)
+                            {
+                                <div class="row">
+                                    <div class="col-md-4">
+                                        <div class="card text-center">
+                                            <div class="card-body">
+                                                <h3 class="text-primary">@stats.PlayerCount</h3>
+                                                <p class="mb-0">Spieler</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="card text-center">
+                                            <div class="card-body">
+                                                <h3 class="text-success">@stats.GameCount</h3>
+                                                <p class="mb-0">Spiele</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="card text-center">
+                                            <div class="card-body">
+                                                <h3 class="text-warning">@stats.GamePlayerCount</h3>
+                                                <p class="mb-0">Spiel-Einträge</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private bool isExporting = false;
+    private bool isImporting = false;
+    private string? message;
+    private bool isError = false;
+    private IBrowserFile? selectedFile;
+    private DatabaseStats? stats;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadStats();
+    }
+
+    private async Task LoadStats()
+    {
+        stats = new DatabaseStats
+        {
+            PlayerCount = await DbContext.Players.CountAsync(),
+            GameCount = await DbContext.Games.CountAsync(),
+            GamePlayerCount = await DbContext.GamePlayers.CountAsync()
+        };
+    }
+
+    private async Task ExportDatabase()
+    {
+        isExporting = true;
+        message = null;
+
+        try
+        {
+            var export = new DatabaseExport
+            {
+                ExportDate = DateTime.UtcNow,
+                Players = await DbContext.Players.ToListAsync(),
+                Games = await DbContext.Games.ToListAsync(),
+                GamePlayers = await DbContext.GamePlayers.ToListAsync()
+            };
+
+            var json = JsonSerializer.Serialize(export, new JsonSerializerOptions
+            {
+                WriteIndented = true
+            });
+
+            var bytes = Encoding.UTF8.GetBytes(json);
+            var fileName = $"civ5hype_backup_{DateTime.Now:yyyyMMdd_HHmmss}.json";
+
+            await JS.InvokeVoidAsync("downloadFile", fileName, Convert.ToBase64String(bytes));
+
+            message = $"✅ Export erfolgreich! Datei: {fileName}";
+            isError = false;
+        }
+        catch (Exception ex)
+        {
+            message = $"❌ Fehler beim Export: {ex.Message}";
+            isError = true;
+        }
+        finally
+        {
+            isExporting = false;
+        }
+    }
+
+    private void HandleFileSelected(InputFileChangeEventArgs e)
+    {
+        selectedFile = e.File;
+        message = $"Datei ausgewählt: {selectedFile.Name}";
+        isError = false;
+    }
+
+    private async Task ImportDatabase()
+    {
+        if (selectedFile == null) return;
+
+        isImporting = true;
+        message = null;
+
+        try
+        {
+            using var stream = selectedFile.OpenReadStream(maxAllowedSize: 50 * 1024 * 1024); // 50 MB
+            var export = await JsonSerializer.DeserializeAsync<DatabaseExport>(stream);
+
+            if (export == null)
+            {
+                throw new Exception("Ungültiges Backup-Format");
+            }
+
+            // Clear existing data
+            DbContext.GamePlayers.RemoveRange(DbContext.GamePlayers);
+            DbContext.Games.RemoveRange(DbContext.Games);
+            DbContext.Players.RemoveRange(DbContext.Players);
+            await DbContext.SaveChangesAsync();
+
+            // Import new data
+            if (export.Players != null)
+            {
+                await DbContext.Players.AddRangeAsync(export.Players);
+            }
+            if (export.Games != null)
+            {
+                await DbContext.Games.AddRangeAsync(export.Games);
+            }
+            if (export.GamePlayers != null)
+            {
+                await DbContext.GamePlayers.AddRangeAsync(export.GamePlayers);
+            }
+
+            await DbContext.SaveChangesAsync();
+            await LoadStats();
+
+            message = $"✅ Import erfolgreich! {export.Players?.Count ?? 0} Spieler, {export.Games?.Count ?? 0} Spiele importiert.";
+            isError = false;
+        }
+        catch (Exception ex)
+        {
+            message = $"❌ Fehler beim Import: {ex.Message}";
+            isError = true;
+        }
+        finally
+        {
+            isImporting = false;
+            selectedFile = null;
+        }
+    }
+
+    private class DatabaseExport
+    {
+        public DateTime ExportDate { get; set; }
+        public List<Player>? Players { get; set; }
+        public List<Game>? Games { get; set; }
+        public List<GamePlayer>? GamePlayers { get; set; }
+    }
+
+    private class DatabaseStats
+    {
+        public int PlayerCount { get; set; }
+        public int GameCount { get; set; }
+        public int GamePlayerCount { get; set; }
+    }
+}
+
