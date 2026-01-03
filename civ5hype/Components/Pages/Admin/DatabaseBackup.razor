@@ -186,20 +186,33 @@
 
         try
         {
-            var export = new DatabaseExport
+            // Create a simpler export object to reduce memory usage
+            var export = new
             {
                 ExportDate = DateTime.UtcNow,
-                Players = await DbContext.Players.ToListAsync(),
-                Games = await DbContext.Games.ToListAsync(),
-                GamePlayers = await DbContext.GamePlayers.ToListAsync()
+                Players = await DbContext.Players
+                    .Select(p => new { p.Id, p.Name, p.CreatedAt, p.UserId })
+                    .ToListAsync(),
+                Games = await DbContext.Games
+                    .Select(g => new { g.Id, g.PlayedOn, g.Comment, g.WinRound, g.CreatedById, g.CreatedAt })
+                    .ToListAsync(),
+                GamePlayers = await DbContext.GamePlayers
+                    .Select(gp => new { 
+                        gp.Id, gp.GameId, gp.PlayerId, gp.Rank, gp.IsWinner, 
+                        gp.Civilization, gp.SkillLevel, gp.HalberSiegOpStart, 
+                        gp.SiegerDerHerzen, gp.Betrueger 
+                    })
+                    .ToListAsync()
             };
 
-            var json = JsonSerializer.Serialize(export, new JsonSerializerOptions
+            // Serialize with streaming to reduce memory
+            using var stream = new MemoryStream();
+            await JsonSerializer.SerializeAsync(stream, export, new JsonSerializerOptions
             {
-                WriteIndented = true
+                WriteIndented = false // Don't indent to save space
             });
 
-            var bytes = Encoding.UTF8.GetBytes(json);
+            var bytes = stream.ToArray();
             var fileName = $"civ5hype_backup_{DateTime.Now:yyyyMMdd_HHmmss}.json";
             
             // Store in memory cache with unique ID
