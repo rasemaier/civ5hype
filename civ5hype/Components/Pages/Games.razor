@@ -378,7 +378,7 @@ else
                                 IsWinner = selectedPlayers[i].IsWinner,
                                 Civilization = selectedPlayers[i].Civilization,
                                 SkillLevel = selectedPlayers[i].SkillLevel.HasValue 
-                                    ? (civ5hype.Data.Enums.SkillLevel)selectedPlayers[i].SkillLevel.Value 
+                                    ? (civ5hype.Data.Enums.SkillLevel?)selectedPlayers[i].SkillLevel.Value 
                                     : null,
                                 HalberSiegOpStart = selectedPlayers[i].HalberSiegOpStart,
                                 SiegerDerHerzen = selectedPlayers[i].SiegerDerHerzen,

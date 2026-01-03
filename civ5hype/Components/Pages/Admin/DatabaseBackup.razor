@@ -8,10 +8,11 @@
 @using System.Text.Json
 @using System.Text
 @using Microsoft.AspNetCore.Components.Forms
+@using Microsoft.Extensions.Caching.Memory
 @inject ApplicationDbContext DbContext
 @inject NavigationManager Navigation
 @inject AuthenticationStateProvider AuthenticationStateProvider
-@inject Microsoft.Extensions.Caching.Memory.IMemoryCache MemoryCache
+@inject IMemoryCache MemoryCache
 @attribute [Authorize]
 @rendermode InteractiveServer
 
