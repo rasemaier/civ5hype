@@ -78,7 +78,7 @@
                                         <strong>⚠️ Achtung:</strong> Bestehende Daten werden überschrieben!
                                     </div>
                                     <InputFile OnChange="HandleFileSelected" accept=".json" class="form-control mb-2" />
-                                    <button class="btn btn-warning" @onclick="ImportDatabase" disabled="@(selectedFile == null || isImporting)">
+                                    <button class="btn btn-warning" @onclick="ImportDatabase" disabled="@IsImportDisabled">
                                         @if (isImporting)
                                         {
                                             <span class="spinner-border spinner-border-sm me-2"></span>
